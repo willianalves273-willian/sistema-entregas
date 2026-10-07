@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sistema de Entregas — Firebase</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#17202a}
+header{background:#17365d;color:white;padding:18px;text-align:center}header h1{margin:0 0 5px;font-size:24px}
+.container{max-width:1050px;margin:18px auto;padding:0 12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:15px}
+.card{background:white;border-radius:12px;padding:18px;box-shadow:0 2px 8px #0001;margin-bottom:15px}
+h2{margin-top:0;color:#17365d;font-size:20px}label{display:block;font-weight:bold;margin:10px 0 5px}
+input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:11px;border:1px solid #bbb;border-radius:8px}
+textarea{min-height:80px;resize:vertical}.btn{border:0;border-radius:8px;padding:11px 15px;cursor:pointer;font-weight:bold;margin:5px 3px 0 0}
+.primary{background:#17365d;color:white}.success{background:#198754;color:white}.danger{background:#c62828;color:white}.secondary{background:#e9ecef}
+.status{padding:10px;border-radius:8px;background:#eef3f8;margin:10px 0}.ok{background:#e7f6ec;color:#126b32}.warn{background:#fff3cd;color:#664d03}
+table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left}th{background:#eef3f8}
+.code{font-size:24px;font-weight:bold;letter-spacing:3px;text-align:center;background:#f5f5f5;padding:12px;border-radius:8px}
+canvas{max-width:100%;border:1px solid #bbb;border-radius:8px;background:white}.signature-wrap{touch-action:none}
+#camera{width:100%;max-height:330px;background:#111;border-radius:10px;display:none}
+@media(max-width:700px){.grid{grid-template-columns:1fr}.container{margin-top:10px}.card{padding:14px}header h1{font-size:21px}th,td{font-size:13px}}
+</style>
+</head>
+<body>
+<header><h1>📦 Sistema de Entregas</h1><div>Ambiente de teste — Firebase</div></header>
+<div class="container">
+<div id="fbStatus" class="status">🔄 Conectando ao Firebase...</div>
+
+<div class="grid">
+<section class="card">
+<h2>1. Cadastrar cliente</h2>
+<label>Nome</label><input id="clienteNome" placeholder="Nome do cliente">
+<label>Telefone (opcional)</label><input id="clienteTelefone" placeholder="Telefone">
+<button class="btn primary" onclick="cadastrarCliente()">Cadastrar cliente</button>
+<div id="clienteMsg"></div>
+</section>
+
+<section class="card">
+<h2>2. Criar pedido</h2>
+<label>Cliente</label><select id="pedidoCliente"><option value="">Selecione</option></select>
+<label>O que está sendo enviado?</label>
+<select id="pedidoTipo">
+<option value="">Selecione</option>
+<option>Pacote</option>
+<option>Caixa</option>
+<option>Malote</option>
+<option>Sacola</option>
+<option>Envelope</option>
+<option>Fardo</option>
+<option>Outro</option>
+</select>
+<label>Quantidade</label><input id="pedidoVolumes" type="number" min="1" value="1" placeholder="Ex.: 3">
+<label>Observações</label><textarea id="pedidoObs" placeholder="Observações"></textarea>
+<button class="btn success" onclick="criarPedido()">Criar pedido e gerar código</button>
+<div id="pedidoMsg"></div>
+</section>
+</div>
+
+<section class="card">
+<h2>3. Liberar pedido pela câmera</h2>
+<p>Use o QR Code do pedido. Aponte a câmera para o código. Se o navegador não permitir a leitura automática, o código também pode ser digitado.</p>
+<button class="btn primary" onclick="iniciarCamera()">📷 Abrir câmera</button>
+<button class="btn secondary" onclick="pararCamera()">Parar câmera</button>
+<video id="camera" playsinline></video>
+<label>Código de retirada</label><input id="codigoBusca" placeholder="Ex.: AB12CD34">
+<button class="btn primary" onclick="buscarPedidoCodigo()">Pesquisar pedido</button>
+<div id="pedidoEncontrado"></div>
+</section>
+
+<section class="card">
+<h2>4. Assinatura do cliente</h2>
+<p>Após conferir o pedido, o cliente assina abaixo.</p>
+<div class="signature-wrap"><canvas id="assinatura" width="900" height="280"></canvas></div>
+<button class="btn secondary" onclick="limparAssinatura()">Limpar assinatura</button>
+<button class="btn success" onclick="confirmarEntrega()">✍️ Confirmar recebimento e liberar</button>
+<div id="entregaMsg"></div>
+</section>
+
+<section class="card">
+<h2>5. Relatório de pedidos</h2>
+<button class="btn secondary" onclick="carregarPedidos()">Atualizar</button>
+<button class="btn secondary" onclick="window.print()">🖨️ Imprimir</button>
+<div style="overflow:auto;margin-top:10px"><table><thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Qtd.</th><th>Status</th><th>Código</th><th>Data</th></tr></thead><tbody id="tabelaPedidos"></tbody></table></div>
+</section>
+
+<section class="card">
+<h2>6. Relatório do vendedor</h2>
+<p>Aqui o vendedor pode acompanhar os pedidos, conferir o código e saber quais já foram retirados.</p>
+<label>Filtrar</label>
+<select id="filtroVendedor" onchange="carregarRelatorioVendedor()">
+<option value="TODOS">Todos os pedidos</option>
+<option value="AGUARDANDO RETIRADA">Aguardando retirada</option>
+<option value="ENTREGUE">Já retirados</option>
+</select>
+<button class="btn secondary" onclick="carregarRelatorioVendedor()">Atualizar relatório</button>
+<button class="btn primary" onclick="imprimirRelatorioVendedor()">🖨️ Imprimir relatório</button>
+<div style="overflow:auto;margin-top:10px">
+<table><thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Qtd.</th><th>Código</th><th>Situação</th></tr></thead>
+<tbody id="tabelaVendedor"></tbody></table>
+</div>
+</section>
+
+<section class="card">
+<h2>7. Consulta do cliente</h2>
+<p>Digite o código para visualizar o pedido.</p>
+<input id="consultaClienteCodigo" placeholder="Código de retirada">
+<button class="btn primary" onclick="consultarCliente()">Consultar</button>
+<div id="consultaResultado"></div>
+</section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {getDatabase,ref,set,push,get,update} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyC6zgVT1M2MGd5xtHWS6WxH-iuhgPn292s",
+authDomain:"sistema-vendas-78698.firebaseapp.com",
+databaseURL:"https://sistema-vendas-78698-default-rtdb.firebaseio.com",
+projectId:"sistema-vendas-78698",
+storageBucket:"sistema-vendas-78698.firebasestorage.app",
+messagingSenderId:"438799530084",
+appId:"1:438799530084:web:8e14cffb4e29d293584771"
+};
+const app=initializeApp(firebaseConfig),db=getDatabase(app);
+window.db=db; window.firebaseRef=ref;
+
+const clientesRef=()=>ref(db,"sistema_entregas/clientes");
+const pedidosRef=()=>ref(db,"sistema_entregas/pedidos");
+let pedidoAtual=null, stream=null;
+
+function agora(){return new Date().toISOString();}
+function codigo(){
+  const palavras=[
+    "BOLO","CHUTE","CASA","BOLA","GATO","PATO","MESA","LUA","SOL","RIO",
+    "CAFE","PÃO","FITA","FLOR","SAPO","TREM","PIPA","VACA","MALA","LAGO",
+    "FACA","FOGO","DADO","CAMA","COPO","GALO","RATO","PEIXE","LIVRO","BANCO",
+    "PORTA","JANELA","CAMPO","VERDE","AMIGO","FESTA","DOCE","FRUTA","MILHO","ARROZ"
+  ];
+  const a=palavras[Math.floor(Math.random()*palavras.length)];
+  const b=palavras[Math.floor(Math.random()*palavras.length)];
+  return a+"-"+b;
+}
+function esc(s){return String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));}
+function msg(id,t,ok=true){document.getElementById(id).innerHTML='<div class="status '+(ok?'ok':'warn')+'">'+t+'</div>';}
+
+async function testar(){
+ try{await get(ref(db,"sistema_entregas"));document.getElementById("fbStatus").textContent="☁️ Firebase conectado";document.getElementById("fbStatus").className="status ok";carregarClientes();carregarPedidos();carregarRelatorioVendedor();}
+ catch(e){document.getElementById("fbStatus").textContent="⚠️ Firebase sem acesso: "+e.message;document.getElementById("fbStatus").className="status warn";}
+}
+async function cadastrarCliente(){
+ const nome=document.getElementById("clienteNome").value.trim();if(!nome)return msg("clienteMsg","Informe o nome.",false);
+ const r=push(clientesRef());await set(r,{nome,telefone:document.getElementById("clienteTelefone").value.trim(),criadoEm:agora()});
+ document.getElementById("clienteNome").value="";document.getElementById("clienteTelefone").value="";
+ msg("clienteMsg","Cliente cadastrado com sucesso.");carregarClientes();
+}
+async function carregarClientes(){
+ const s=await get(clientesRef());const dados=s.val()||{},sel=document.getElementById("pedidoCliente");
+ sel.innerHTML='<option value="">Selecione</option>';
+ Object.entries(dados).forEach(([id,c])=>{const o=document.createElement("option");o.value=id;o.textContent=c.nome;sel.appendChild(o);});
+}
+async function criarPedido(){
+ const clienteId=document.getElementById("pedidoCliente").value;if(!clienteId)return msg("pedidoMsg","Selecione um cliente.",false);
+ const c=await get(ref(db,"sistema_entregas/clientes/"+clienteId));const cliente=c.val();
+ const r=push(pedidosRef()),cod=codigo();
+ const pedido={numero:r.key.slice(-6).toUpperCase(),clienteId,cliente:cliente.nome,telefone:cliente.telefone||"",tipo:document.getElementById("pedidoTipo").value,volumes:Number(document.getElementById("pedidoVolumes").value||1),observacoes:document.getElementById("pedidoObs").value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:agora()};
+ await set(r,pedido);
+ document.getElementById("pedidoMsg").innerHTML='<div class="status ok">Pedido criado com sucesso.<div class="code">'+cod+'</div><div id="qrcodeNovoPedido" style="display:flex;justify-content:center;margin:12px 0"></div><div style="text-align:center">Informe este código ao vendedor ou apresente o QR Code.</div></div>';
+  if(window.QRCode){
+    new QRCode(document.getElementById("qrcodeNovoPedido"),{text:cod,width:180,height:180});
+  }
+ document.getElementById("pedidoTipo").value="";document.getElementById("pedidoObs").value="";
+ carregarPedidos();carregarRelatorioVendedor();
+}
+async function localizar(cod){
+ const s=await get(pedidosRef()),dados=s.val()||{};
+ for(const [id,p] of Object.entries(dados))if(String(p.codigo).toUpperCase()===cod.toUpperCase())return {id,p};
+ return null;
+}
+async function buscarPedidoCodigo(){
+ const cod=document.getElementById("codigoBusca").value.trim();if(!cod)return msg("pedidoEncontrado","Informe o código.",false);
+ const r=await localizar(cod);if(!r)return msg("pedidoEncontrado","Pedido não encontrado.",false);
+ pedidoAtual=r;mostrarPedido(r);
+}
+function mostrarPedido(r){
+ const p=r.p;document.getElementById("pedidoEncontrado").innerHTML='<div class="status ok"><b>Pedido '+esc(p.numero)+'</b><br>Cliente: '+esc(p.cliente)+'<br>Pacotes: '+esc(p.volumes)+'<br>Tipo: '+esc(p.tipo||'Não informado')+'<br><b>Status: '+esc(p.status)+'</b></div>';
+}
+async function confirmarEntrega(){
+ if(!pedidoAtual)return msg("entregaMsg","Primeiro localize um pedido.",false);
+ const p=pedidoAtual.p;if(p.status!=="AGUARDANDO RETIRADA")return msg("entregaMsg","Este pedido já foi processado.",false);
+ const assinatura=document.getElementById("assinatura").toDataURL("image/png");
+ if(!assinatura || assinatura.length<1000)return msg("entregaMsg","É necessário colher a assinatura do cliente.",false);
+ await update(ref(db,"sistema_entregas/pedidos/"+pedidoAtual.id),{status:"ENTREGUE",entregueEm:agora(),assinatura});
+ msg("entregaMsg","✅ Recebimento confirmado e mercadoria liberada.");
+ pedidoAtual=null;limparAssinatura();carregarPedidos();
+}
+async function carregarPedidos(){
+ const s=await get(pedidosRef()),dados=s.val()||{},tb=document.getElementById("tabelaPedidos");tb.innerHTML="";
+ Object.entries(dados).reverse().forEach(([id,p])=>{tb.innerHTML+='<tr><td>'+esc(p.numero)+'</td><td>'+esc(p.cliente)+'</td><td>'+esc(p.tipo||'')+'</td><td>'+esc(p.volumes)+'</td><td>'+esc(p.status)+'</td><td>'+esc(p.codigo)+'</td><td>'+esc(p.entregueEm||p.criadoEm).replace("T"," ").slice(0,16)+'</td></tr>';});
+}
+function imprimirRelatorioVendedor(){
+  const tabela=document.getElementById("tabelaVendedor");
+  const filtro=document.getElementById("filtroVendedor")?.value||"TODOS";
+  if(!tabela || !tabela.rows.length){
+    alert("Não há pedidos para imprimir neste relatório.");
+    return;
+  }
+  const tituloFiltro = filtro==="TODOS" ? "Todos os pedidos" :
+    (filtro==="AGUARDANDO RETIRADA" ? "Aguardando retirada" : "Já retirados");
+  const conteudo = `
+    <html><head><title>Relatório do Vendedor</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:25px;color:#111}
+      h1{text-align:center;font-size:22px}
+      p{text-align:center}
+      table{width:100%;border-collapse:collapse;margin-top:20px}
+      th,td{border:1px solid #777;padding:8px;text-align:left}
+      th{background:#eee}
+      .rodape{margin-top:20px;font-size:12px}
+    </style></head>
+    <body>
+      <h1>RELATÓRIO DO VENDEDOR</h1>
+      <p>Filtro: ${tituloFiltro}</p>
+      <table>
+        <thead><tr><th>Pedido</th><th>Cliente</th><th>Tipo</th><th>Qtd.</th><th>Código</th><th>Situação</th></tr></thead>
+        <tbody>${tabela.innerHTML}</tbody>
+      </table>
+      <div class="rodape">Sistema de Entregas — Relatório emitido em ${new Date().toLocaleString("pt-BR")}</div>
+    </body></html>`;
+  const janela=window.open("","_blank","width=1000,height=700");
+  if(!janela){alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este sistema.");return;}
+  janela.document.write(conteudo);
+  janela.document.close();
+  janela.focus();
+  setTimeout(()=>janela.print(),300);
+}
+async function carregarRelatorioVendedor(){
+ const filtro=document.getElementById("filtroVendedor")?.value||"TODOS";
+ const s=await get(pedidosRef()),dados=s.val()||{},tb=document.getElementById("tabelaVendedor");
+ if(!tb)return;
+ tb.innerHTML="";
+ Object.entries(dados).reverse().forEach(([id,p])=>{
+   if(filtro!=="TODOS" && p.status!==filtro)return;
+   tb.innerHTML+='<tr><td>'+esc(p.numero)+'</td><td>'+esc(p.cliente)+'</td><td>'+esc(p.tipo||"")+'</td><td>'+esc(p.volumes)+'</td><td><b>'+esc(p.codigo)+'</b></td><td>'+esc(p.status)+'</td></tr>';
+ });
+}
+async function consultarCliente(){
+ const cod=document.getElementById("consultaClienteCodigo").value.trim(),r=await localizar(cod);
+ if(!r)return msg("consultaResultado","Código não encontrado.",false);
+ const p=r.p;document.getElementById("consultaResultado").innerHTML='<div class="status"><b>Pedido '+esc(p.numero)+'</b><br>Cliente: '+esc(p.cliente)+'<br>Pacotes: '+esc(p.volumes)+'<br>Status: <b>'+esc(p.status)+'</b><br>Tipo: '+esc(p.tipo||'Não informado')+'</div>';
+}
+
+function setupAssinatura(){
+ const c=document.getElementById("assinatura"),x=c.getContext("2d");let desenhando=false;
+ const pos=e=>{const r=c.getBoundingClientRect(),q=e.touches?e.touches[0]:e;return{x:(q.clientX-r.left)*c.width/r.width,y:(q.clientY-r.top)*c.height/r.height}};
+ const inicio=e=>{desenhando=true;const p=pos(e);x.beginPath();x.moveTo(p.x,p.y);e.preventDefault()};
+ const move=e=>{if(!desenhando)return;const p=pos(e);x.lineTo(p.x,p.y);x.stroke();e.preventDefault()};
+ const fim=()=>desenhando=false;
+ x.lineWidth=3;x.lineCap="round";x.lineJoin="round";
+ c.addEventListener("mousedown",inicio);c.addEventListener("mousemove",move);window.addEventListener("mouseup",fim);
+ c.addEventListener("touchstart",inicio,{passive:false});c.addEventListener("touchmove",move,{passive:false});c.addEventListener("touchend",fim);
+}
+window.limparAssinatura=()=>{const c=document.getElementById("assinatura");c.getContext("2d").clearRect(0,0,c.width,c.height)};
+window.cadastrarCliente=cadastrarCliente;window.criarPedido=criarPedido;window.carregarRelatorioVendedor=carregarRelatorioVendedor;window.imprimirRelatorioVendedor=imprimirRelatorioVendedor;window.buscarPedidoCodigo=buscarPedidoCodigo;window.confirmarEntrega=confirmarEntrega;window.carregarPedidos=carregarPedidos;window.consultarCliente=consultarCliente;window.carregarClientes=carregarClientes;
+window.iniciarCamera=async()=>{
+  try{
+    if(!("mediaDevices" in navigator) || !navigator.mediaDevices.getUserMedia) throw new Error("Este navegador não permite acesso à câmera.");
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}}});
+    const v=document.getElementById("camera");v.srcObject=stream;v.style.display="block";await v.play();
+    if("BarcodeDetector" in window){
+      let detector;
+      try{detector=new BarcodeDetector({formats:["qr_code"]});}
+      catch(e){detector=new BarcodeDetector();}
+      msg("pedidoEncontrado","📷 Aponte a câmera para o QR Code.",true);
+      const ler=async()=>{
+        if(!stream || v.readyState<2)return;
+        try{
+          const encontrados=await detector.detect(v);
+          if(encontrados && encontrados.length){
+            const valor=(encontrados[0].rawValue||"").trim();
+            if(valor){
+              document.getElementById("codigoBusca").value=valor;
+              await buscarPedidoCodigo();
+              pararCamera();
+              return;
+            }
+          }
+        }catch(e){}
+        if(stream)requestAnimationFrame(ler);
+      };
+      requestAnimationFrame(ler);
+    }else{
+      msg("pedidoEncontrado","📷 Câmera aberta. Neste navegador a leitura automática de QR Code não é suportada; use o código abaixo.",true);
+    }
+  }catch(e){msg("pedidoEncontrado","Não foi possível abrir a câmera: "+e.message,false)}
+};
+window.pararCamera=()=>{if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;document.getElementById("camera").style.display="none"};
+setupAssinatura();testar();
+</script>
+</body>
+</html>
