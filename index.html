@@ -1,1193 +1,175 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema de Entregas V10</title>
-
-<!-- Geração do QR Code -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<!-- Leitura do QR Code pela câmera -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
-
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sistema de Entregas — Vendedor</title>
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#f1f3f5;font-family:Arial,sans-serif;color:#20252b}
-header{background:#17202a;color:#fff;padding:16px}
-header h1{margin:0;font-size:22px}
-main{max-width:1100px;margin:auto;padding:14px}
-nav{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
-button{border:0;border-radius:8px;padding:11px 14px;font-weight:bold;cursor:pointer}
-nav button{background:#ddd}
-nav button.ativo{background:#17202a;color:#fff}
-section{display:none}
-section.ativo{display:block}
-.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 7px #0001}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-input,select,textarea{width:100%;padding:11px;border:1px solid #bbb;border-radius:8px;font-size:16px;margin-top:5px}
-label{font-weight:bold;font-size:14px}
-textarea{min-height:75px}
-.primary{background:#1769aa;color:#fff}
-.success{background:#198754;color:#fff}
-.danger{background:#c62828;color:#fff}
-.warn{background:#e0a800;color:#111}
-.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.stat{text-align:center;border:1px solid #ddd;border-radius:10px;padding:14px}
-.stat b{display:block;font-size:27px}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse}
-th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left;white-space:nowrap}
-.actions{display:flex;gap:7px;flex-wrap:wrap}
-.code{font-size:27px;font-weight:800;letter-spacing:2px}
-.badge{display:inline-block;padding:5px 9px;border-radius:20px;background:#eee;font-weight:bold}
-#cameraBox{display:none}
-#video{width:100%;max-height:400px;background:#111;border-radius:10px}
-#scanCanvas{display:none}
-#qrGerado{margin:12px 0;min-height:250px;display:flex;align-items:center;justify-content:center}
-#qrGerado img,#qrGerado canvas{max-width:250px}
-.small{font-size:13px;color:#666}
-@media(max-width:700px){.grid,.stats{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.grid,.stats{grid-template-columns:1fr}}
-@media print{nav,.no-print,.acoes-relatorio{display:none!important}.card{box-shadow:none}}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7;color:#17212b}
+header{background:#164b70;color:#fff;padding:20px 14px;text-align:center}header h1{margin:0 0 5px}
+main{max-width:980px;margin:auto;padding:14px}.menu{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+button{border:0;border-radius:10px;padding:13px 15px;font-size:16px;font-weight:700;background:#1769aa;color:#fff;cursor:pointer}
+button.sec{background:#687781}button.ok{background:#2e7d32}button.danger{background:#b3261e}
+.tela{display:none}.tela.ativa{display:block}.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0001}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{width:100%;padding:12px;border:1px solid #b7c0c7;border-radius:9px;font-size:16px}textarea{min-height:80px}
+.acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.cliente,.pedido{border:1px solid #ddd;border-radius:9px;padding:13px;margin:9px 0;background:#fafafa}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.kpi{text-align:center;background:#eef3f7;border-radius:9px;padding:12px}.kpi b{display:block;font-size:25px}
+.aguardando{color:#a36200;font-weight:bold}.entregue{color:#287d35;font-weight:bold}.small{font-size:13px;color:#5d6870}
+#qr{display:flex;justify-content:center;margin:15px}.sucesso{background:#e8f5e9;padding:12px;border-radius:9px}.aviso{background:#fff2c7;padding:12px;border-radius:9px}
+#assinaturaCanvas{width:100%;height:220px;border:2px dashed #7b8790;border-radius:10px;background:#fff;touch-action:none;display:block}
+.caixaAssinatura{margin-top:14px;padding:14px;border:1px solid #d8dee3;border-radius:10px;background:#fafafa}
+@media(max-width:600px){.menu{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}}
+@media print{.nao-imprimir{display:none!important}.card{box-shadow:none}}
 </style>
 </head>
-
 <body>
-<header>
-<h1>📦 SISTEMA DE ENTREGAS</h1>
-<div class="small" style="color:#ddd">Controle exclusivo do vendedor</div>
-</header>
-
+<header><h1>📦 SISTEMA DE ENTREGAS</h1><div>Painel do vendedor</div></header>
 <main>
-
-<nav>
-<button class="ativo" onclick="abrirAba('cadastro',this)">➕ Novo pedido</button>
-<button onclick="abrirAba('retirada',this)">📷 Retirada</button>
-<button onclick="abrirAba('relatorios',this)">📊 Relatórios</button>
-<button onclick="abrirAba('backup',this)">💾 Backup</button>
-</nav>
-
-<section id="cadastro" class="ativo">
-
-<div class="card">
-<h2>Novo pedido</h2>
-
-<div class="grid">
-
-<div>
-<label>Cliente</label>
-<input id="cliente">
+<div class="menu nao-imprimir">
+<button onclick="abrir('inicio')">🏠 INÍCIO</button>
+<button onclick="abrir('clientes')">👥 CLIENTES</button>
+<button onclick="abrir('nova')">📦 NOVA ENCOMENDA</button>
+<button onclick="abrir('localizar')">🔎 LOCALIZAR</button>
+<button onclick="abrir('relatorio')">📊 RELATÓRIO</button>
 </div>
 
-<div>
-<label>O que está sendo enviado?</label>
-<select id="tipo">
-<option>Pacote</option>
-<option>Caixa</option>
-<option>Malote</option>
-<option>Sacola</option>
-<option>Envelope</option>
-<option>Fardo</option>
-<option>Outro</option>
-</select>
-</div>
+<section id="inicio" class="tela ativa"><div class="card"><h2>Visão geral</h2><div class="kpis">
+<div class="kpi"><b id="nClientes">0</b>Clientes</div><div class="kpi"><b id="nAguardando">0</b>Aguardando</div><div class="kpi"><b id="nEntregues">0</b>Entregues</div>
+</div><p class="small">O cliente cria a própria senha na Área do Cliente. O vendedor não cadastra senha.</p></div></section>
 
-<div>
-<label>Quantidade de volumes</label>
-<input id="volumes" type="number" min="1" value="1">
-</div>
-
-<div>
-<label>Observações</label>
-<input id="observacoes">
-</div>
-
-</div>
-
-<br>
-<button class="primary" onclick="criarPedido()">📦 Criar pedido</button>
-</div>
-
-<div class="card" id="resultadoNovo" style="display:none">
-<h3>Pedido criado</h3>
-<p>Código do pedido:</p>
-<div class="code" id="codigoNovo"></div>
-
-<p><b>Informe este código ao vendedor.</b></p>
-
-<div id="qrGerado"></div>
-
-<p class="small">
-O QR Code contém o código do pedido. O vendedor pode apontar a câmera diretamente para ele.
-</p>
-
-<button onclick="imprimirEtiqueta()">🖨️ Imprimir código / QR</button>
-</div>
-
+<section id="clientes" class="tela">
+<div class="card"><h2>👥 Clientes</h2><label>Buscar cliente</label><input id="busca" oninput="listarClientes()" placeholder="Digite o nome...">
+<div class="acoes"><button onclick="novoCliente()">➕ Novo cliente</button><button class="sec" onclick="abrir('inicio')">Voltar</button></div><div id="listaClientes"></div></div>
+<div id="formCliente" class="card" style="display:none"><h3>Novo cliente</h3>
+<div class="grid"><div><label>Nome completo</label><input id="nome"></div><div><label>Telefone</label><input id="telefone"></div><div><label>E-mail do cliente</label><input id="email" type="email" placeholder="cliente@email.com"></div></div>
+<p class="small">O e-mail será usado para vincular a conta criada pelo próprio cliente. Não cadastre senha aqui.</p>
+<div class="acoes"><button class="ok" onclick="salvarCliente()">Salvar cliente</button><button class="sec" onclick="fecharFormCliente()">Cancelar</button></div></div>
 </section>
 
+<section id="nova" class="tela"><div class="card"><h2>📦 Nova encomenda</h2>
+<label>Cliente</label><select id="clientePedido"></select>
+<label>O que está sendo enviado?</label><select id="tipo"><option>Pacote</option><option>Caixa</option><option>Malote</option><option>Sacola</option><option>Envelope</option><option>Fardo</option><option>Outro</option></select>
+<label>Quantidade de volumes</label><input id="volumes" type="number" min="1" value="1">
+<label>Observação</label><textarea id="obs"></textarea>
+<div class="acoes"><button onclick="criarPedido()">GERAR ENCOMENDA</button><button class="sec" onclick="abrir('inicio')">Voltar</button></div></div>
+<div id="resultadoNova"></div></section>
 
-<section id="retirada">
+<section id="localizar" class="tela"><div class="card"><h2>🔎 Localizar encomenda</h2>
+<label>Código</label><input id="codigo" placeholder="Digite o código">
+<div class="acoes"><button onclick="buscarCodigo()">BUSCAR</button><button class="sec" onclick="camera()">📷 LER QR</button><button class="danger" onclick="pararCamera()">Parar câmera</button></div>
+<div id="cameraBox"></div><div id="resultadoBusca"></div></div></section>
 
-<div class="card">
-
-<h2>Localizar pedido</h2>
-
-<div class="grid">
-
-<div>
-<label>Código verbal</label>
-<input id="codigoBusca" placeholder="Digite ou cole o código">
-</div>
-
-<div>
-<label>Leitura rápida</label>
-<div class="actions">
-<button class="primary" onclick="abrirCamera()">📷 LER QR</button>
-<button onclick="buscarCodigo()">🔎 BUSCAR</button>
-</div>
-</div>
-
-</div>
-
-<div id="cameraBox">
-
-<br>
-
-<video id="video" autoplay playsinline></video>
-<canvas id="scanCanvas"></canvas>
-
-<p class="small">
-Aponte a câmera para o QR Code. O sistema tenta a leitura continuamente.
-</p>
-
-<button class="danger" onclick="fecharCamera()">✖ Fechar câmera</button>
-
-</div>
-
-</div>
-
-<div class="card" id="pedidoEncontrado" style="display:none"></div>
-
-</section>
-
-
-<section id="relatorios">
-
-<div class="card">
-
-<h2>Controle de pedidos</h2>
-
-<div class="stats">
-
-<div class="stat">
-<b id="rTotal">0</b>
-Total
-</div>
-
-<div class="stat">
-<b id="rAguardando">0</b>
-Aguardando
-</div>
-
-<div class="stat">
-<b id="rEntregues">0</b>
-Entregues
-</div>
-
-<div class="stat">
-<b id="rPercent">0%</b>
-Retirados
-</div>
-
-</div>
-
-<br>
-
-<div class="actions no-print">
-<button class="primary" onclick="carregarRelatorio()">🔄 Atualizar</button>
-<button onclick="window.print()">🖨️ Imprimir</button>
-</div>
-
-<br>
-
-<div class="table-wrap">
-
-<table>
-
-<thead>
-<tr>
-<th>Cliente</th>
-<th>Mercadoria</th>
-<th>Volumes</th>
-<th>Código</th>
-<th>Status</th>
-<th>Ação</th>
-</tr>
-</thead>
-
-<tbody id="tabelaRelatorio"></tbody>
-
-</table>
-
-</div>
-
-</div>
-
-</section>
-
-
-<section id="backup">
-
-<div class="card">
-
-<h2>💾 Cópia de segurança</h2>
-
-<p>Senha administrativa: <b>8526</b></p>
-
-<button class="primary" onclick="fazerBackup()">💾 Fazer backup</button>
-
-<hr>
-
-<input id="arquivoBackup" type="file" accept=".json">
-
-<br><br>
-
-<button class="warn" onclick="restaurarBackup()">♻️ Restaurar backup</button>
-
-</div>
-
-</section>
-
+<section id="relatorio" class="tela"><div class="card"><h2>📊 Relatório</h2>
+<div class="acoes"><button class="sec" onclick="filtrar('TODAS')">Todas</button><button class="sec" onclick="filtrar('AGUARDANDO RETIRADA')">Aguardando</button><button class="sec" onclick="filtrar('ENTREGUE')">Entregues</button></div>
+<div class="acoes"><button class="sec" onclick="selecionarTodos()">☑️ Selecionar todos</button><button class="sec" onclick="desmarcar()">Desmarcar</button><button class="danger" onclick="excluirSelecionados()">🗑️ Excluir selecionadas</button><button onclick="imprimirSelecionados()">🖨️ Imprimir selecionadas</button></div>
+<div id="listaPedidos"></div></div></section>
 </main>
 
-
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script type="module">
-
-import {initializeApp}
-from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
-
-import {getDatabase,ref,set,push,get,update,remove}
-from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
-
-
-const firebaseConfig={
-apiKey:"AIzaSyC6zgVT1M2PGd5xtHWS6WxH-iuhgPn292s",
-authDomain:"sistema-vendas-78698.firebaseapp.com",
-databaseURL:"https://sistema-vendas-78698-default-rtdb.firebaseio.com",
-projectId:"sistema-vendas-78698",
-storageBucket:"sistema-vendas-78698.firebasestorage.app",
-messagingSenderId:"438799530084",
-appId:"1:438799530084:web:8e14cffb4e29d293584771"
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import {getDatabase,ref,get,set,push,update,remove} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyC6zgVT1M2BGd5xtHWS6WxH-iuhgPn292s",authDomain:"sistema-vendas-78698.firebaseapp.com",databaseURL:"https://sistema-vendas-78698-default-rtdb.firebaseio.com",projectId:"sistema-vendas-78698",storageBucket:"sistema-vendas-78698.firebasestorage.app",messagingSenderId:"438799530084",appId:"1:438799530084:web:8e14cffb4e29d293584771"};
+const app=initializeApp(cfg),db=getDatabase(app),base="sistema_entregas";
+let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
+const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+async function carregar(){
+ try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
+ catch(e){alert("Erro ao carregar o Firebase: "+e.message)}
+}
+window.abrir=id=>{pararCamera();document.querySelectorAll(".tela").forEach(x=>x.classList.remove("ativa"));document.getElementById(id).classList.add("ativa");if(id==="clientes")listarClientes();if(id==="nova")carregarSelect();if(id==="relatorio")filtrar(filtroAtual);atualizarResumo()};
+function atualizarResumo(){nClientes.textContent=Object.keys(clientes).length;nAguardando.textContent=Object.values(pedidos).filter(p=>p.status==="AGUARDANDO RETIRADA").length;nEntregues.textContent=Object.values(pedidos).filter(p=>p.status==="ENTREGUE").length}
+window.novoCliente=()=>{formCliente.style.display="block";nome.focus()};window.fecharFormCliente=()=>{formCliente.style.display="none";nome.value=telefone.value=email.value=""};
+window.salvarCliente=async()=>{
+ let n=nome.value.trim(),t=telefone.value.trim(),e=email.value.trim().toLowerCase();if(!n||!e)return alert("Informe nome e e-mail.");
+ let duplicado=Object.entries(clientes).find(([id,c])=>(c.email||"").toLowerCase()===e);if(duplicado)return alert("Este e-mail já está cadastrado para um cliente.");
+ let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
 };
-
-const app=initializeApp(firebaseConfig);
-const db=getDatabase(app);
-const BASE="sistema_entregas/pedidos";
-
-const palavras=[
-"BOLO","CHUTE","CASA","BOLA","GATO","PATO","MESA","LUA","SOL","RIO",
-"CAFE","PAO","FITA","FLOR","SAPO","TREM","PIPA","VACA","MALA","LAGO",
-"FACA","FOGO","DADO","CAMA","COPO","GALO","RATO","PEIXE","LIVRO","BANCO",
-"PORTA","JANELA","CAMPO","VERDE","AMIGO","FESTA","DOCE","FRUTA","MILHO","ARROZ"
-];
-
-
-function el(id){
-return document.getElementById(id);
-}
-
-
-function esc(v){
-return String(v ?? "").replace(/[&<>"']/g,function(c){
-return {
-"&":"&amp;",
-"<":"&lt;",
-">":"&gt;",
-'"':"&quot;",
-"'":"&#039;"
-}[c];
-});
-}
-
-
-function gerarCodigo(){
-
-const a=palavras[Math.floor(Math.random()*palavras.length)];
-const b=palavras[Math.floor(Math.random()*palavras.length)];
-
-return a+"-"+b;
-}
-
-
-async function gerarCodigoUnico(){
-
-const snap=await get(ref(db,BASE));
-
-const usados=new Set();
-
-if(snap.exists()){
-
-Object.values(snap.val()).forEach(p=>{
-
-if(p && p.codigo){
-usados.add(String(p.codigo).toUpperCase());
-}
-
-});
-
-}
-
-for(let i=0;i<100;i++){
-
-const codigo=gerarCodigo();
-
-if(!usados.has(codigo)){
-return codigo;
-}
-
-}
-
-throw new Error("Não foi possível gerar um código único.");
-}
-
-
-window.abrirAba=function(id,botao){
-
-document.querySelectorAll("section")
-.forEach(s=>s.classList.remove("ativo"));
-
-el(id).classList.add("ativo");
-
-document.querySelectorAll("nav button")
-.forEach(b=>b.classList.remove("ativo"));
-
-botao.classList.add("ativo");
-
-if(id==="relatorios"){
-carregarRelatorio();
-}
-
+window.listarClientes=()=>{
+ let q=(busca.value||"").toLowerCase().trim(),arr=Object.entries(clientes).filter(([id,c])=>(c.nome||"").toLowerCase().includes(q)).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||""));
+ listaClientes.innerHTML=arr.map(([id,c])=>`<div class=cliente><b>${esc(c.nome)}</b><br><span class=small>${esc(c.telefone||"")} · ${esc(c.email||"E-mail não cadastrado")}</span><div class=acoes><button onclick="usarCliente('${id}')">Nova encomenda</button><button class=danger onclick="excluirCliente('${id}')">Excluir</button></div></div>`).join("")||"<p>Nenhum cliente encontrado.</p>";
 };
-
-
-window.criarPedido=async function(){
-
-const cliente=el("cliente").value.trim();
-const tipo=el("tipo").value;
-const volumes=Number(el("volumes").value);
-const observacoes=el("observacoes").value.trim();
-
-if(!cliente){
-alert("Informe o cliente.");
-return;
-}
-
-if(!volumes || volumes<1){
-alert("Informe a quantidade de volumes.");
-return;
-}
-
-try{
-
-const codigo=await gerarCodigoUnico();
-
-const novo=push(ref(db,BASE));
-
-await set(novo,{
-cliente:cliente,
-tipo:tipo,
-volumes:volumes,
-observacoes:observacoes,
-codigo:codigo,
-status:"AGUARDANDO RETIRADA",
-criadoEm:new Date().toISOString()
-});
-
-
-el("codigoNovo").textContent=codigo;
-el("resultadoNovo").style.display="block";
-el("qrGerado").innerHTML="";
-
-
-/*
-O QR contém apenas:
-ENTREGA|CODIGO
-Isso facilita a validação e evita depender de uma URL.
-*/
-
-const conteudoQR="ENTREGA|"+codigo;
-
-
-/*
-qrcodejs usa a API:
-new QRCode(elemento, opções)
-*/
-new QRCode(el("qrGerado"),{
-text:conteudoQR,
-width:240,
-height:240,
-correctLevel:QRCode.CorrectLevel.M
-});
-
-
-}catch(e){
-
-console.error(e);
-alert("Erro ao criar pedido: "+e.message);
-
-}
-
+window.usarCliente=id=>{abrir("nova");clientePedido.value=id};
+window.excluirCliente=async id=>{let c=clientes[id],qtd=Object.values(pedidos).filter(p=>p.clienteId===id).length;if(!confirm(`Excluir ${c.nome}?${qtd?`\n\nExistem ${qtd} encomenda(s) vinculada(s). Elas serão preservadas.`:""}`))return;if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");await remove(ref(db,base+"/clientes/"+id));await carregar()};
+function carregarSelect(){clientePedido.innerHTML='<option value="">Selecione o cliente</option>'+Object.entries(clientes).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||"")).map(([id,c])=>`<option value="${id}">${esc(c.nome)}</option>`).join("")}
+function novoCodigo(){let chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",s;do{s="";for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)]}while(Object.values(pedidos).some(p=>p.codigo===s));return s}
+window.criarPedido=async()=>{
+ let cid=clientePedido.value;if(!cid)return alert("Selecione um cliente.");let c=clientes[cid],r=push(ref(db,base+"/pedidos")),cod=novoCodigo();
+ let p={clienteId:cid,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
+ await set(r,p);resultadoNova.innerHTML=`<div class="card sucesso"><h3>✅ Encomenda criada</h3><p><b>Cliente:</b> ${esc(c.nome)}</p><p><b>Código:</b> ${cod}</p><p><b>Volumes:</b> ${p.volumes}</p><div id=qr></div><p class=small>O cliente verá esta encomenda na Área do Cliente depois de criar sua conta com o e-mail cadastrado.</p><div class=acoes><button onclick="window.print()">🖨️ Imprimir</button><button onclick="navigator.clipboard?.writeText('${cod}');alert('Código copiado.')">📋 Copiar código</button></div></div>`;if(window.QRCode)new QRCode(qr,{text:"ENTREGA|ID:"+r.key,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});obs.value="";volumes.value=1;await carregar();
 };
-
-
-function extrairCodigoQR(texto){
-
-texto=String(texto||"").trim();
-
-if(texto.toUpperCase().startsWith("ENTREGA|")){
-return texto.substring(8).trim().toUpperCase();
-}
-
-try{
-
-const url=new URL(texto);
-
-const codigo=url.searchParams.get("codigo");
-
-if(codigo){
-return codigo.trim().toUpperCase();
-}
-
-}catch(e){}
-
-return texto.toUpperCase();
-
-}
-
-
-window.buscarCodigo=async function(){
-
-const codigo=el("codigoBusca").value.trim();
-
-if(!codigo){
-alert("Digite o código.");
-return;
-}
-
-try{
-
-const snap=await get(ref(db,BASE));
-
-let encontrado=null;
-
-if(snap.exists()){
-
-Object.entries(snap.val()).forEach(([id,p])=>{
-
-if(
-p &&
-String(p.codigo||"").toUpperCase()===codigo.toUpperCase()
-){
-
-encontrado={
-id:id,
-...p
+window.buscarCodigo=()=>{let cod=codigo.value.trim().toUpperCase(),x=Object.entries(pedidos).find(([id,p])=>(p.codigo||"").toUpperCase()===cod);if(!x)return resultadoBusca.innerHTML="<div class=aviso>Encomenda não encontrada.</div>";mostrar(x[0],x[1])};
+function mostrar(id,p){resultadoBusca.innerHTML=`<div class=card><h3>📦 Encomenda localizada</h3><p><b>Cliente:</b> ${esc(p.cliente)}</p><p><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}</p><p><b>Volumes:</b> ${p.volumes||1}</p><p><b>Código:</b> ${esc(p.codigo)}</p><p class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</p>${p.status==="AGUARDANDO RETIRADA"?`<button class=ok onclick="abrirAssinatura('${id}')">✍️ ASSINAR E FINALIZAR</button>`:"<div class=sucesso>Entrega já registrada.</div>"}</div>`}
+let assinaturaId=null, assinaturaCtx=null, assinaturaDesenhando=false, assinaturaTemTraço=false;
+window.abrirAssinatura=function(id){
+ assinaturaId=id;
+ resultadoBusca.innerHTML=`<div class="card">
+ <h3>✍️ Assinatura do cliente</h3>
+ <p><b>Cliente:</b> ${esc(pedidos[id]?.cliente||"")}</p>
+ <p class="small">Peça ao cliente para assinar com o dedo na área abaixo.</p>
+ <div class="caixaAssinatura">
+ <canvas id="assinaturaCanvas"></canvas>
+ <div class="acoes">
+   <button class="sec" onclick="limparAssinatura()">Limpar assinatura</button>
+   <button class="ok" onclick="confirmarEntregaComAssinatura()">Continuar</button>
+ </div>
+ </div>
+ <div id="etapaSenha" style="display:none;margin-top:14px" class="aviso">
+   <b>Última etapa</b>
+   <p>Digite a senha administrativa para registrar a entrega.</p>
+   <input id="senhaEntrega" type="password" inputmode="numeric" placeholder="Senha administrativa">
+   <div class="acoes"><button class="ok" onclick="finalizarEntrega()">CONFIRMAR ENTREGA</button></div>
+ </div>
+ </div>`;
+ setTimeout(prepararCanvasAssinatura,50);
 };
-
+function prepararCanvasAssinatura(){
+ const c=document.getElementById("assinaturaCanvas"); if(!c)return;
+ const dpr=window.devicePixelRatio||1, r=c.getBoundingClientRect();
+ c.width=Math.round(r.width*dpr); c.height=Math.round(r.height*dpr);
+ assinaturaCtx=c.getContext("2d"); assinaturaCtx.scale(dpr,dpr);
+ assinaturaCtx.lineWidth=2.4; assinaturaCtx.lineCap="round"; assinaturaCtx.lineJoin="round";
+ assinaturaDesenhando=false; assinaturaTemTraço=false;
+ const pos=e=>{const rr=c.getBoundingClientRect();return{x:e.clientX-rr.left,y:e.clientY-rr.top}};
+ c.onpointerdown=e=>{e.preventDefault();assinaturaDesenhando=true;assinaturaTemTraço=true;const p=pos(e);assinaturaCtx.beginPath();assinaturaCtx.moveTo(p.x,p.y);c.setPointerCapture?.(e.pointerId)};
+ c.onpointermove=e=>{if(!assinaturaDesenhando)return;e.preventDefault();const p=pos(e);assinaturaCtx.lineTo(p.x,p.y);assinaturaCtx.stroke()};
+ c.onpointerup=e=>{assinaturaDesenhando=false;c.releasePointerCapture?.(e.pointerId)};
+ c.onpointercancel=()=>assinaturaDesenhando=false;
 }
-
-});
-
-}
-
-mostrarPedido(encontrado);
-
-}catch(e){
-
-console.error(e);
-alert("Erro ao consultar os pedidos.");
-
-}
-
+window.limparAssinatura=function(){const c=document.getElementById("assinaturaCanvas");if(!c||!assinaturaCtx)return;const r=c.getBoundingClientRect();assinaturaCtx.clearRect(0,0,r.width,r.height);assinaturaTemTraço=false};
+window.confirmarEntregaComAssinatura=function(){
+ if(!assinaturaTemTraço)return alert("O cliente precisa assinar antes de continuar.");
+ const etapa=document.getElementById("etapaSenha"); if(etapa)etapa.style.display="block";
+ document.getElementById("senhaEntrega")?.focus();
 };
-
-
-function mostrarPedido(p){
-
-const box=el("pedidoEncontrado");
-
-box.style.display="block";
-
-
-if(!p){
-
-box.innerHTML="<h3>❌ Pedido não encontrado</h3>";
-return;
-
-}
-
-
-let html=`
-
-<h3>📦 PEDIDO LOCALIZADO</h3>
-
-<p><b>Cliente:</b> ${esc(p.cliente)}</p>
-
-<p>
-<b>Mercadoria:</b>
-${esc(p.volumes || p.quantidade || 1)}
-×
-${esc(p.tipo || p.produtos || "Não informado")}
-</p>
-
-<p><b>Código:</b> ${esc(p.codigo)}</p>
-
-<p>
-<b>Status:</b>
-<span class="badge">${esc(p.status)}</span>
-</p>
-`;
-
-
-if(p.observacoes || p.obs){
-
-html+=`
-<p>
-<b>Observações:</b>
-${esc(p.observacoes || p.obs)}
-</p>
-`;
-
-}
-
-
-if(p.status==="ENTREGUE"){
-
-html+="<p>✅ Esta mercadoria já foi entregue.</p>";
-
-}else{
-
-html+=`
-
-<br>
-
-<button
-class="success"
-onclick="confirmarEntrega('${p.id}')">
-
-✅ CONFIRMAR RETIRADA
-
-</button>
-
-`;
-
-}
-
-
-box.innerHTML=html;
-
-}
-
-
-window.confirmarEntrega=async function(id){
-
-const senha=prompt(
-"Digite a senha 8526 para confirmar a retirada:"
-);
-
-if(senha!=="8526"){
-
-if(senha!==null){
-alert("Senha incorreta.");
-}
-
-return;
-
-}
-
-
-if(!confirm(
-"Confirma que a mercadoria foi entregue ao cliente?"
-)){
-return;
-}
-
-
-try{
-
-await update(
-ref(db,BASE+"/"+id),
-{
-status:"ENTREGUE",
-entregueEm:new Date().toISOString()
-}
-);
-
-
-alert("Retirada confirmada.");
-
-boxSeguro="pedidoEncontrado";
-el(boxSeguro).innerHTML=
-"<h3>✅ PEDIDO ENTREGUE</h3>";
-
-}catch(e){
-
-console.error(e);
-alert("Não foi possível confirmar a retirada.");
-
-}
-
+window.finalizarEntrega=async function(){
+ if(!assinaturaTemTraço)return alert("Faça a assinatura primeiro.");
+ if(document.getElementById("senhaEntrega")?.value!=="8526")return alert("Senha administrativa incorreta.");
+ const c=document.getElementById("assinaturaCanvas");
+ const assinatura=c.toDataURL("image/png");
+ const p=pedidos[assinaturaId]; if(!p)return alert("Encomenda não encontrada.");
+ const agora=new Date().toISOString();
+ await update(ref(db,base+"/pedidos/"+assinaturaId),{
+   status:"ENTREGUE",
+   entregueEm:agora,
+   assinatura,
+   assinaturaTipo:"assinatura do cliente na retirada"
+ });
+ p.status="ENTREGUE";p.entregueEm=agora;p.assinatura=assinatura;
+ alert("✅ Entrega confirmada com assinatura.");
+ await carregar();
+ mostrar(assinaturaId,p);
 };
-
-
-window.carregarRelatorio=async function(){
-
-const tb=el("tabelaRelatorio");
-
-tb.innerHTML=
-"<tr><td colspan='6'>Carregando...</td></tr>";
-
-
-try{
-
-const snap=await get(ref(db,BASE));
-
-const pedidos=snap.exists()
-?
-Object.entries(snap.val()).map(([id,p])=>({
-id:id,
-...p
-}))
-:
-[];
-
-
-let aguardando=0;
-let entregues=0;
-
-
-pedidos.forEach(p=>{
-
-if(p.status==="ENTREGUE"){
-entregues++;
-}else{
-aguardando++;
-}
-
-});
-
-
-el("rTotal").textContent=pedidos.length;
-el("rAguardando").textContent=aguardando;
-el("rEntregues").textContent=entregues;
-
-el("rPercent").textContent=
-(pedidos.length
-?
-Math.round(entregues*100/pedidos.length)
-:
-0)+"%";
-
-
-if(!pedidos.length){
-
-tb.innerHTML=
-"<tr><td colspan='6'>Nenhum pedido.</td></tr>";
-
-return;
-
-}
-
-
-tb.innerHTML=pedidos.map(p=>`
-
-<tr>
-
-<td>${esc(p.cliente)}</td>
-
-<td>${esc(p.tipo || p.produtos || "—")}</td>
-
-<td>${esc(p.volumes || p.quantidade || "—")}</td>
-
-<td><b>${esc(p.codigo)}</b></td>
-
-<td>${esc(p.status)}</td>
-
-<td class="acoes-relatorio">
-
-<button
-class="danger"
-onclick="excluirPedido('${p.id}')">
-
-🗑️ Excluir
-
-</button>
-
-</td>
-
-</tr>
-
-`).join("");
-
-
-}catch(e){
-
-console.error(e);
-
-tb.innerHTML=
-"<tr><td colspan='6'>Erro ao carregar relatório.</td></tr>";
-
-}
-
-};
-
-
-window.excluirPedido=async function(id){
-
-const senha=prompt(
-"Digite a senha 8526 para excluir este pedido:"
-);
-
-if(senha!=="8526"){
-
-if(senha!==null){
-alert("Senha incorreta.");
-}
-
-return;
-
-}
-
-
-if(!confirm(
-"Excluir definitivamente este pedido?"
-)){
-return;
-}
-
-
-try{
-
-await remove(ref(db,BASE+"/"+id));
-
-await carregarRelatorio();
-
-}catch(e){
-
-alert("Não foi possível excluir o pedido.");
-
-}
-
-};
-
-
-/* ---------------- CAMERA QR ---------------- */
-
-let stream=null;
-let animation=null;
-
-
-window.abrirCamera=async function(){
-
-if(!window.isSecureContext){
-
-alert(
-"A câmera precisa de HTTPS. Abra o sistema pelo endereço do GitHub Pages."
-);
-
-return;
-
-}
-
-
-if(!navigator.mediaDevices ||
-!navigator.mediaDevices.getUserMedia){
-
-alert(
-"Este navegador não disponibiliza câmera. Use o código verbal."
-);
-
-return;
-
-}
-
-
-el("cameraBox").style.display="block";
-
-
-try{
-
-stream=await navigator.mediaDevices.getUserMedia({
-
-video:{
-facingMode:{
-ideal:"environment"
-},
-width:{
-ideal:1280
-},
-height:{
-ideal:720
-}
-},
-
-audio:false
-
-});
-
-
-el("video").srcObject=stream;
-
-await el("video").play();
-
-animation=requestAnimationFrame(lerQR);
-
-
-}catch(e){
-
-console.error(e);
-
-fecharCamera();
-
-alert(
-"Não foi possível abrir a câmera. Use o código verbal."
-);
-
-}
-
-};
-
-
-function lerQR(){
-
-if(!stream){
-return;
-}
-
-
-const video=el("video");
-const canvas=el("scanCanvas");
-const ctx=canvas.getContext("2d",{willReadFrequently:true});
-
-
-if(
-video.readyState>=2 &&
-video.videoWidth>0 &&
-video.videoHeight>0
-){
-
-canvas.width=video.videoWidth;
-canvas.height=video.videoHeight;
-
-
-ctx.drawImage(
-video,
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-
-const imagem=ctx.getImageData(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
-
-const resultado=window.jsQR
-?
-window.jsQR(
-imagem.data,
-imagem.width,
-imagem.height,
-{
-inversionAttempts:"attemptBoth"
-}
-)
-:
-null;
-
-
-if(resultado && resultado.data){
-
-const codigo=extrairCodigoQR(resultado.data);
-
-el("codigoBusca").value=codigo;
-
-fecharCamera();
-
-buscarCodigo();
-
-return;
-
-}
-
-}
-
-
-animation=requestAnimationFrame(lerQR);
-
-}
-
-
-window.fecharCamera=function(){
-
-if(animation){
-
-cancelAnimationFrame(animation);
-animation=null;
-
-}
-
-
-if(stream){
-
-stream.getTracks().forEach(t=>t.stop());
-stream=null;
-
-}
-
-
-el("cameraBox").style.display="none";
-
-};
-
-
-/* ---------------- IMPRESSÃO ---------------- */
-
-window.imprimirEtiqueta=function(){
-
-const codigo=el("codigoNovo").textContent;
-
-if(!codigo){
-
-alert("Nenhum pedido foi criado.");
-return;
-
-}
-
-const qr=el("qrGerado").innerHTML;
-
-const w=window.open("","_blank");
-
-if(!w){
-
-alert("Permita pop-ups para imprimir.");
-return;
-
-}
-
-w.document.write(`
-<html>
-<head>
-<meta charset="utf-8">
-<title>Etiqueta de Entrega</title>
-
-<style>
-
-body{
-font-family:Arial;
-text-align:center;
-padding:25px;
-}
-
-.codigo{
-font-size:30px;
-font-weight:bold;
-letter-spacing:3px;
-}
-
-img{
-max-width:260px;
-}
-
-</style>
-
-</head>
-
-<body>
-
-<h2>📦 ENTREGA</h2>
-
-${qr}
-
-<p>CÓDIGO</p>
-
-<div class="codigo">${esc(codigo)}</div>
-
-<p><b>Informe este código ao vendedor.</b></p>
-
-<script>
-window.onload=function(){
-window.print();
-}
-<\/script>
-
-</body>
-</html>
-`);
-
-w.document.close();
-
-};
-
-
-/* ---------------- BACKUP ---------------- */
-
-window.fazerBackup=async function(){
-
-const senha=prompt("Digite a senha 8526:");
-
-if(senha!=="8526"){
-
-if(senha!==null){
-alert("Senha incorreta.");
-}
-
-return;
-
-}
-
-
-try{
-
-const snap=await get(
-ref(db,"sistema_entregas")
-);
-
-
-const dados={
-
-versao:2,
-
-data:new Date().toISOString(),
-
-firebase:snap.exists()
-?
-snap.val()
-:
-{}
-
-};
-
-
-const blob=new Blob(
-[
-JSON.stringify(
-dados,
-null,
-2
-)
-],
-{
-type:"application/json"
-}
-);
-
-
-const url=URL.createObjectURL(blob);
-
-const a=document.createElement("a");
-
-a.href=url;
-
-a.download=
-"backup-sistema-entregas-"+
-new Date().toISOString().slice(0,10)+
-".json";
-
-a.click();
-
-setTimeout(
-()=>URL.revokeObjectURL(url),
-1000
-);
-
-
-}catch(e){
-
-console.error(e);
-
-alert(
-"Não foi possível criar o backup."
-);
-
-}
-
-};
-
-
-window.restaurarBackup=async function(){
-
-const senha=prompt("Digite a senha 8526:");
-
-if(senha!=="8526"){
-
-if(senha!==null){
-alert("Senha incorreta.");
-}
-
-return;
-
-}
-
-
-const arquivo=el("arquivoBackup").files[0];
-
-if(!arquivo){
-
-alert("Selecione o arquivo de backup.");
-return;
-
-}
-
-
-if(!confirm(
-"ATENÇÃO: a restauração substituirá os dados atuais. Continuar?"
-)){
-
-return;
-
-}
-
-
-try{
-
-const dados=
-JSON.parse(
-await arquivo.text()
-);
-
-
-await set(
-ref(db,"sistema_entregas"),
-dados.firebase || {}
-);
-
-
-alert(
-"Backup restaurado com sucesso."
-);
-
-
-}catch(e){
-
-console.error(e);
-
-alert(
-"Arquivo de backup inválido."
-);
-
-}
-
-};
-
+window.filtrar=f=>{filtroAtual=f;let arr=Object.entries(pedidos).filter(([id,p])=>f==="TODAS"||p.status===f).sort((a,b)=>(b[1].criadoEm||"").localeCompare(a[1].criadoEm||""));listaPedidos.innerHTML=arr.map(([id,p])=>`<div class=pedido><input class=sel type=checkbox value="${id}"> <b>${esc(p.cliente)}</b><br>${esc(p.tipo||p.produtos||"")} — ${p.volumes||1} volume(s)<br><b>Código:</b> ${esc(p.codigo||"")}<br><span class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</span><div class=acoes><button onclick="abrirPedido('${id}')">Abrir</button></div></div>`).join("")||"<p>Nenhuma encomenda.</p>"};
+window.abrirPedido=id=>{abrir("localizar");codigo.value=pedidos[id].codigo;mostrar(id,pedidos[id])};
+window.selecionarTodos=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=true);window.desmarcar=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=false);
+window.excluirSelecionados=async()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");if(!confirm(`Excluir ${ids.length} encomenda(s) definitivamente?`))return;await Promise.all(ids.map(id=>remove(ref(db,base+"/pedidos/"+id))));await carregar()};
+window.imprimirSelecionados=()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");let w=open("","_blank");w.document.write("<h1>Comprovantes de Entrega</h1>");ids.forEach(id=>{let p=pedidos[id];w.document.write(`<div style="border:1px solid #333;padding:15px;margin:12px 0"><b>Cliente:</b> ${esc(p.cliente)}<br><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}<br><b>Volumes:</b> ${p.volumes||1}<br><b>Código:</b> ${esc(p.codigo||"")}<br><b>Status:</b> ${esc(p.status||"")}</div>`)});w.document.close();w.print()};
+window.camera=async()=>{if(!navigator.mediaDevices?.getUserMedia)return alert("Câmera indisponível.");pararCamera();cameraBox.innerHTML='<video id=video autoplay playsinline style="width:100%;border-radius:10px"></video><p class=small>Aponte para o QR Code.</p>';try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});video.srcObject=stream;ler()}catch(e){alert("Não foi possível abrir a câmera: "+e.message)}};
+function ler(){if(!stream)return;let v=video;if(!v||v.readyState<2)return requestAnimationFrame(ler);let c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;let x=c.getContext("2d"),d;x.drawImage(v,0,0,c.width,c.height);d=x.getImageData(0,0,c.width,c.height);let r=window.jsQR?.(d.data,d.width,d.height);if(r?.data){let s=r.data;if(s.startsWith("ENTREGA|ID:")){let id=s.slice(11);if(pedidos[id]){pararCamera();mostrar(id,pedidos[id]);return}}codigo.value=s;pararCamera();buscarCodigo();return}requestAnimationFrame(ler)}
+window.pararCamera=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}let v=document.getElementById("video");if(v)v.srcObject=null};
+carregar();
 </script>
-
-</body>
-</html>
-
+</body></html>
