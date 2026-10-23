@@ -63,14 +63,7 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <section id="relatorio" class="tela"><div class="card"><h2>📊 Relatório</h2>
 <div class="acoes"><button class="sec" onclick="filtrar('TODAS')">Todas</button><button class="sec" onclick="filtrar('AGUARDANDO RETIRADA')">Aguardando</button><button class="sec" onclick="filtrar('ENTREGUE')">Entregues</button></div>
 <div class="acoes"><button class="sec" onclick="selecionarTodos()">☑️ Selecionar todos</button><button class="sec" onclick="desmarcar()">Desmarcar</button><button class="danger" onclick="excluirSelecionados()">🗑️ Excluir selecionadas</button><button onclick="imprimirSelecionados()">🖨️ Imprimir selecionadas</button></div>
-<div id="listaPedidos"></div></div>
-<div class="card nao-imprimir"><h2>💾 Backup e restauração</h2>
-<p class="small">Baixe uma cópia dos clientes e das encomendas deste banco Firebase. Guarde o arquivo em local seguro.</p>
-<div class="acoes"><button class="ok" onclick="baixarBackup()">⬇️ Baixar backup</button><button class="sec" onclick="document.getElementById('arquivoBackup').click()">📂 Restaurar backup JSON</button></div>
-<input id="arquivoBackup" type="file" accept="application/json,.json" style="display:none" onchange="restaurarBackup(event)">
-<p class="small">A restauração mescla os registros do backup com os atuais: adiciona registros ausentes e atualiza IDs correspondentes, sem apagar outros registros atuais.</p>
-<div id="statusBackup" class="small" role="status"></div>
-</div></section>
+<div id="listaPedidos"></div></div></section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -78,39 +71,10 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {getDatabase,ref,get,set,push,update,remove} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
-const cfg={apiKey:"AIzaSyC6zgVT1M2BGd5xtHWS6WxH-iuhgPn292s",authDomain:"sistema-vendas-78698.firebaseapp.com",databaseURL:"https://sistema-vendas-78698-default-rtdb.firebaseio.com",projectId:"sistema-vendas-78698",storageBucket:"sistema-vendas-78698.firebasestorage.app",messagingSenderId:"438799530084",appId:"1:438799530084:web:8e14cffb4e29d293584771"};
+const cfg={apiKey:"AIzaSyBlqKsTH_45vPT4Ysi8_U4RZbVOA4II2s",authDomain:"sistema-de-entregas-e456e.firebaseapp.com",databaseURL:"https://sistema-de-entregas-e456e-default-rtdb.firebaseio.com",projectId:"sistema-de-entregas-e456e",storageBucket:"sistema-de-entregas-e456e.firebasestorage.app",messagingSenderId:"759314871865",appId:"1:759314871865:web:07c401370f0e816475ffe8"};
 const app=initializeApp(cfg),db=getDatabase(app),base="sistema_entregas";
 let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-window.baixarBackup=async()=>{
- try{
-  const [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);
-  const backup={formato:"backup-sistema-entregas-vendedor",versao:1,projeto:cfg.projectId,criadoEm:new Date().toISOString(),clientes:c.exists()?c.val():{},pedidos:p.exists()?p.val():{}};
-  const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="backup-entregas-"+new Date().toISOString().replace(/[:.]/g,"-")+".json";
-  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-  const el=document.getElementById("statusBackup");if(el)el.textContent="Backup baixado. Guarde o arquivo em local seguro.";
- }catch(e){alert("Não foi possível gerar o backup: "+e.message)}
-};
-window.restaurarBackup=async(event)=>{
- const arquivo=event.target.files?.[0];if(!arquivo)return;
- try{
-  const b=JSON.parse(await arquivo.text());
-  if(!b||b.formato!=="backup-sistema-entregas-vendedor"||!b.clientes||!b.pedidos||typeof b.clientes!=="object"||typeof b.pedidos!=="object"){
-   alert("Arquivo inválido. Selecione um backup JSON gerado por este sistema.");return;
-  }
-  const total=Object.keys(b.clientes).length+Object.keys(b.pedidos).length;
-  if(!confirm(`Restaurar ${Object.keys(b.clientes).length} cliente(s) e ${Object.keys(b.pedidos).length} encomenda(s) do backup de ${b.criadoEm||"data não informada"}?\n\nOs registros do backup serão mesclados aos atuais. Registros atuais que não constam no backup não serão apagados.`))return;
-  if(Object.keys(b.clientes).length)await update(ref(db,base+"/clientes"),b.clientes);
-  if(Object.keys(b.pedidos).length)await update(ref(db,base+"/pedidos"),b.pedidos);
-  await carregar();
-  const el=document.getElementById("statusBackup");if(el)el.textContent=`Restauração concluída: ${total} registro(s) processado(s).`;
-  alert("Backup restaurado. Os registros foram mesclados aos dados atuais.");
- }catch(e){alert("Falha ao restaurar backup: "+e.message)}
- finally{event.target.value=""}
-};
-
 async function carregar(){
  try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
  catch(e){alert("Erro ao carregar o Firebase: "+e.message)}
