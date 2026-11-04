@@ -26,14 +26,6 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <body>
 <header><h1>📦 SISTEMA DE ENTREGAS</h1><div>Painel do vendedor</div></header>
 <main>
-<div id="loginAdmin" class="card" style="max-width:500px;margin:20px auto">
-<h2>🔐 Acesso do vendedor</h2>
-<label>E-mail administrativo</label><input id="adminEmail" type="email" autocomplete="username">
-<label>Senha</label><input id="adminSenha" type="password" autocomplete="current-password">
-<div class="acoes"><button onclick="entrarAdmin()">Entrar</button></div><p id="authMsg" class="small"></p>
-</div>
-<div id="painelAdmin" style="display:none">
-
 <div class="menu nao-imprimir">
 <button onclick="abrir('inicio')">🏠 INÍCIO</button>
 <button onclick="abrir('clientes')">👥 CLIENTES</button>
@@ -72,8 +64,6 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <div class="acoes"><button class="sec" onclick="filtrar('TODAS')">Todas</button><button class="sec" onclick="filtrar('AGUARDANDO RETIRADA')">Aguardando</button><button class="sec" onclick="filtrar('ENTREGUE')">Entregues</button></div>
 <div class="acoes"><button class="sec" onclick="selecionarTodos()">☑️ Selecionar todos</button><button class="sec" onclick="desmarcar()">Desmarcar</button><button class="danger" onclick="excluirSelecionados()">🗑️ Excluir selecionadas</button><button onclick="imprimirSelecionados()">🖨️ Imprimir selecionadas</button></div>
 <div id="listaPedidos"></div></div></section>
-<div class="card nao-imprimir"><button class="sec" onclick="sairAdmin()">Sair do painel</button></div>
-</div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -81,21 +71,12 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {getDatabase,ref,get,set,push,update,remove} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
-import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 const cfg={apiKey:"AIzaSyBlqKsTH_45vPT4Ysi8_U4RZbVOA4II2s",authDomain:"sistema-de-entregas-e456e.firebaseapp.com",databaseURL:"https://sistema-de-entregas-e456e-default-rtdb.firebaseio.com",projectId:"sistema-de-entregas-e456e",storageBucket:"sistema-de-entregas-e456e.firebasestorage.app",messagingSenderId:"759314871865",appId:"1:759314871865:web:07c401370f0e816475ffe8"};
-const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app),base="sistema_entregas";
-const ADMIN_UID="J1nm0x1xFNfuMP6wGWzLyUdRETO2";
+const app=initializeApp(cfg),db=getDatabase(app),base="sistema_entregas";
 let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-window.entrarAdmin=async()=>{const email=adminEmail.value.trim(),senha=adminSenha.value;if(!email||!senha){authMsg.textContent="Informe e-mail e senha.";return}try{await signInWithEmailAndPassword(auth,email,senha)}catch(e){authMsg.textContent="Falha no login: "+(e.code||e.message)}};
-window.sairAdmin=()=>signOut(auth);
-onAuthStateChanged(auth,user=>{const ok=!!user&&user.uid===ADMIN_UID;loginAdmin.style.display=ok?"none":"block";painelAdmin.style.display=ok?"block":"none";if(user&&!ok){authMsg.textContent="Esta conta não tem autorização administrativa.";signOut(auth);return}if(ok)carregar()});
 async function carregar(){
- try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};
-  // Backfill seguro dos índices de e-mail e dos UIDs em encomendas antigas.
-  for(const [id,cl] of Object.entries(clientes)){if(cl.email)await set(ref(db,base+"/emailLookup/"+encodeURIComponent(String(cl.email).trim().toLowerCase())),{clienteId:id,email:String(cl.email).trim().toLowerCase()});}
-  for(const [id,ped] of Object.entries(pedidos)){const cl=clientes[ped.clienteId];if(cl?.uid&&!ped.clienteUid)await update(ref(db,base+"/pedidos/"+id),{clienteUid:cl.uid});}
-  atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
+ try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
  catch(e){alert("Erro ao carregar o Firebase: "+e.message)}
 }
 window.abrir=id=>{pararCamera();document.querySelectorAll(".tela").forEach(x=>x.classList.remove("ativa"));document.getElementById(id).classList.add("ativa");if(id==="clientes")listarClientes();if(id==="nova")carregarSelect();if(id==="relatorio")filtrar(filtroAtual);atualizarResumo()};
@@ -104,8 +85,7 @@ window.novoCliente=()=>{formCliente.style.display="block";nome.focus()};window.f
 window.salvarCliente=async()=>{
  let n=nome.value.trim(),t=telefone.value.trim(),e=email.value.trim().toLowerCase();if(!n||!e)return alert("Informe nome e e-mail.");
  let duplicado=Object.entries(clientes).find(([id,c])=>(c.email||"").toLowerCase()===e);if(duplicado)return alert("Este e-mail já está cadastrado para um cliente.");
- let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});
-  await set(ref(db,base+"/emailLookup/"+encodeURIComponent(e)),{clienteId:r.key,email:e});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
+ let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
 };
 window.listarClientes=()=>{
  let q=(busca.value||"").toLowerCase().trim(),arr=Object.entries(clientes).filter(([id,c])=>(c.nome||"").toLowerCase().includes(q)).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||""));
@@ -117,7 +97,7 @@ function carregarSelect(){clientePedido.innerHTML='<option value="">Selecione o 
 function novoCodigo(){let chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",s;do{s="";for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)]}while(Object.values(pedidos).some(p=>p.codigo===s));return s}
 window.criarPedido=async()=>{
  let cid=clientePedido.value;if(!cid)return alert("Selecione um cliente.");let c=clientes[cid],r=push(ref(db,base+"/pedidos")),cod=novoCodigo();
- let p={clienteId:cid,clienteUid:c.uid||null,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
+ let p={clienteId:cid,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
  await set(r,p);resultadoNova.innerHTML=`<div class="card sucesso"><h3>✅ Encomenda criada</h3><p><b>Cliente:</b> ${esc(c.nome)}</p><p><b>Código:</b> ${cod}</p><p><b>Volumes:</b> ${p.volumes}</p><div id=qr></div><p class=small>O cliente verá esta encomenda na Área do Cliente depois de criar sua conta com o e-mail cadastrado.</p><div class=acoes><button onclick="window.print()">🖨️ Imprimir</button><button onclick="navigator.clipboard?.writeText('${cod}');alert('Código copiado.')">📋 Copiar código</button></div></div>`;if(window.QRCode)new QRCode(qr,{text:"ENTREGA|ID:"+r.key,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});obs.value="";volumes.value=1;await carregar();
 };
 window.buscarCodigo=()=>{let cod=codigo.value.trim().toUpperCase(),x=Object.entries(pedidos).find(([id,p])=>(p.codigo||"").toUpperCase()===cod);if(!x)return resultadoBusca.innerHTML="<div class=aviso>Encomenda não encontrada.</div>";mostrar(x[0],x[1])};
