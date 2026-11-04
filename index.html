@@ -6,7 +6,7 @@
 <title>Sistema de Entregas — Vendedor</title>
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7;color:#17212b}
-header{background:#164b70;color:#fff;padding:20px 14px;text-align:center}header h1{margin:0 0 5px}
+#loginBox{max-width:420px;margin:8vh auto;padding:24px;background:#fff;border-radius:14px;box-shadow:0 4px 18px #0002}#loginMsg{margin-top:12px;color:#b3261e;font-weight:bold}[hidden]{display:none!important}header{background:#164b70;color:#fff;padding:20px 14px;text-align:center}header h1{margin:0 0 5px}
 main{max-width:980px;margin:auto;padding:14px}.menu{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
 button{border:0;border-radius:10px;padding:13px 15px;font-size:16px;font-weight:700;background:#1769aa;color:#fff;cursor:pointer}
 button.sec{background:#687781}button.ok{background:#2e7d32}button.danger{background:#b3261e}
@@ -24,17 +24,18 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 </style>
 </head>
 <body>
-<header><h1>📦 SISTEMA DE ENTREGAS</h1><div>Painel do vendedor</div></header>
-<main>
-<div id="loginAdmin" class="card" style="max-width:500px;margin:20px auto">
+<section id="loginBox">
 <h2>🔐 Acesso do vendedor</h2>
-<label>E-mail administrativo</label><input id="adminEmail" type="email" autocomplete="username">
-<label>Senha</label><input id="adminSenha" type="password" autocomplete="current-password">
-<div class="acoes"><button onclick="entrarAdmin()">Entrar</button></div><p id="authMsg" class="small"></p>
-</div>
-<div id="painelAdmin" style="display:none">
-<div class="card nao-imprimir"><button class="sec" onclick="sairAdmin()">SAIR DA CONTA ADMINISTRATIVA</button></div>
-
+<p>Entre com o e-mail e a senha da conta autorizada.</p>
+<form id="loginForm">
+<label for="loginEmail">E-mail</label><input id="loginEmail" type="email" autocomplete="username" required>
+<label for="loginPassword">Senha</label><input id="loginPassword" type="password" autocomplete="current-password" required>
+<div class="acoes"><button type="submit" id="loginBtn">Entrar</button></div>
+<div id="loginMsg" role="alert"></div>
+</form>
+</section>
+<header id="appHeader" hidden><h1>📦 SISTEMA DE ENTREGAS</h1><div>Painel do vendedor</div><button class="sec" onclick="sair()" style="margin-top:10px">Sair</button></header>
+<main id="appMain" hidden>
 <div class="menu nao-imprimir">
 <button onclick="abrir('inicio')">🏠 INÍCIO</button>
 <button onclick="abrir('clientes')">👥 CLIENTES</button>
@@ -73,8 +74,6 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <div class="acoes"><button class="sec" onclick="filtrar('TODAS')">Todas</button><button class="sec" onclick="filtrar('AGUARDANDO RETIRADA')">Aguardando</button><button class="sec" onclick="filtrar('ENTREGUE')">Entregues</button></div>
 <div class="acoes"><button class="sec" onclick="selecionarTodos()">☑️ Selecionar todos</button><button class="sec" onclick="desmarcar()">Desmarcar</button><button class="danger" onclick="excluirSelecionados()">🗑️ Excluir selecionadas</button><button onclick="imprimirSelecionados()">🖨️ Imprimir selecionadas</button></div>
 <div id="listaPedidos"></div></div></section>
-<div class="card nao-imprimir"><button class="sec" onclick="sairAdmin()">Sair do painel</button></div>
-</div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -84,19 +83,25 @@ import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-
 import {getDatabase,ref,get,set,push,update,remove} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
 import {getAuth,signInWithEmailAndPassword,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 const cfg={apiKey:"AIzaSyBlqKsTH_45vPT4Ysi8_U4RZbVOA4II2s",authDomain:"sistema-de-entregas-e456e.firebaseapp.com",databaseURL:"https://sistema-de-entregas-e456e-default-rtdb.firebaseio.com",projectId:"sistema-de-entregas-e456e",storageBucket:"sistema-de-entregas-e456e.firebasestorage.app",messagingSenderId:"759314871865",appId:"1:759314871865:web:07c401370f0e816475ffe8"};
-const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app),base="sistema_entregas";
-const ADMIN_UID="J1nm0x1xFNfuMP6wGWzLyUdRETO2";
+const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app),base="sistema_entregas";\nconst VENDEDOR_UID="J1nm0x1xFNfuMP6wGWzLyUdRETO2";
 let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
-window.entrarAdmin=async()=>{const email=adminEmail.value.trim(),senha=adminSenha.value;if(!email||!senha){authMsg.textContent="Informe e-mail e senha.";return}try{await signInWithEmailAndPassword(auth,email,senha)}catch(e){authMsg.textContent="Não foi possível entrar. Confira e-mail e senha. ("+(e.code||"erro")+")"}};
-window.sairAdmin=()=>signOut(auth);
-onAuthStateChanged(auth,user=>{const ok=!!user&&user.uid===ADMIN_UID;loginAdmin.style.display=ok?"none":"block";painelAdmin.style.display=ok?"block":"none";if(user&&!ok){authMsg.textContent="Esta conta não tem autorização administrativa.";signOut(auth);return}if(ok)carregar()});
+const loginForm=document.getElementById("loginForm"),loginMsg=document.getElementById("loginMsg"),loginBtn=document.getElementById("loginBtn");
+loginForm.addEventListener("submit",async ev=>{
+ ev.preventDefault();loginMsg.textContent="";loginBtn.disabled=true;loginBtn.textContent="Entrando...";
+ try{await signInWithEmailAndPassword(auth,loginEmail.value.trim(),loginPassword.value)}
+ catch(e){loginMsg.textContent=mensagemAuth(e.code);loginBtn.disabled=false;loginBtn.textContent="Entrar"}
+});
+function mensagemAuth(code){return ({ "auth/invalid-credential":"E-mail ou senha incorretos.","auth/user-not-found":"Conta não encontrada.","auth/wrong-password":"Senha incorreta.","auth/invalid-email":"E-mail inválido.","auth/too-many-requests":"Muitas tentativas. Aguarde e tente novamente.","auth/api-key-not-valid":"A chave de API do Firebase é inválida ou está bloqueada."})[code]||("Não foi possível entrar: "+code)}
+window.sair=async()=>{await signOut(auth)};
+onAuthStateChanged(auth,async user=>{
+ if(!user){loginBox.hidden=false;appHeader.hidden=true;appMain.hidden=true;loginBtn.disabled=false;loginBtn.textContent="Entrar";return}
+ if(user.uid!==VENDEDOR_UID){loginMsg.textContent="Esta conta não tem autorização para acessar o painel do vendedor.";await signOut(auth);return}
+ loginBox.hidden=true;appHeader.hidden=false;appMain.hidden=false;loginMsg.textContent="";
+ await carregar();
+});
 async function carregar(){
- try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};
-  // Backfill seguro dos índices de e-mail e dos UIDs em encomendas antigas.
-  for(const [id,cl] of Object.entries(clientes)){if(cl.email)await set(ref(db,base+"/emailLookup/"+encodeURIComponent(String(cl.email).trim().toLowerCase())),{clienteId:id,email:String(cl.email).trim().toLowerCase()});}
-  for(const [id,ped] of Object.entries(pedidos)){const cl=clientes[ped.clienteId];if(cl?.uid&&!ped.clienteUid)await update(ref(db,base+"/pedidos/"+id),{clienteUid:cl.uid});}
-  atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
+ try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
  catch(e){alert("Erro ao carregar o Firebase: "+e.message)}
 }
 window.abrir=id=>{pararCamera();document.querySelectorAll(".tela").forEach(x=>x.classList.remove("ativa"));document.getElementById(id).classList.add("ativa");if(id==="clientes")listarClientes();if(id==="nova")carregarSelect();if(id==="relatorio")filtrar(filtroAtual);atualizarResumo()};
@@ -105,20 +110,19 @@ window.novoCliente=()=>{formCliente.style.display="block";nome.focus()};window.f
 window.salvarCliente=async()=>{
  let n=nome.value.trim(),t=telefone.value.trim(),e=email.value.trim().toLowerCase();if(!n||!e)return alert("Informe nome e e-mail.");
  let duplicado=Object.entries(clientes).find(([id,c])=>(c.email||"").toLowerCase()===e);if(duplicado)return alert("Este e-mail já está cadastrado para um cliente.");
- let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});
-  await set(ref(db,base+"/emailLookup/"+encodeURIComponent(e)),{clienteId:r.key,email:e});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
+ let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
 };
 window.listarClientes=()=>{
  let q=(busca.value||"").toLowerCase().trim(),arr=Object.entries(clientes).filter(([id,c])=>(c.nome||"").toLowerCase().includes(q)).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||""));
  listaClientes.innerHTML=arr.map(([id,c])=>`<div class=cliente><b>${esc(c.nome)}</b><br><span class=small>${esc(c.telefone||"")} · ${esc(c.email||"E-mail não cadastrado")}</span><div class=acoes><button onclick="usarCliente('${id}')">Nova encomenda</button><button class=danger onclick="excluirCliente('${id}')">Excluir</button></div></div>`).join("")||"<p>Nenhum cliente encontrado.</p>";
 };
 window.usarCliente=id=>{abrir("nova");clientePedido.value=id};
-window.excluirCliente=async id=>{let c=clientes[id],qtd=Object.values(pedidos).filter(p=>p.clienteId===id).length;if(!confirm(`Excluir ${c.nome}?${qtd?`\n\nExistem ${qtd} encomenda(s) vinculada(s). Elas serão preservadas.`:""}`))return;if(!auth.currentUser||auth.currentUser.uid!==ADMIN_UID)return alert("Sessão administrativa inválida. Entre novamente.");await remove(ref(db,base+"/clientes/"+id));await carregar()};
+window.excluirCliente=async id=>{let c=clientes[id],qtd=Object.values(pedidos).filter(p=>p.clienteId===id).length;if(!confirm(`Excluir ${c.nome}?${qtd?`\n\nExistem ${qtd} encomenda(s) vinculada(s). Elas serão preservadas.`:""}`))return;if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");await remove(ref(db,base+"/clientes/"+id));await carregar()};
 function carregarSelect(){clientePedido.innerHTML='<option value="">Selecione o cliente</option>'+Object.entries(clientes).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||"")).map(([id,c])=>`<option value="${id}">${esc(c.nome)}</option>`).join("")}
 function novoCodigo(){let chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",s;do{s="";for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)]}while(Object.values(pedidos).some(p=>p.codigo===s));return s}
 window.criarPedido=async()=>{
  let cid=clientePedido.value;if(!cid)return alert("Selecione um cliente.");let c=clientes[cid],r=push(ref(db,base+"/pedidos")),cod=novoCodigo();
- let p={clienteId:cid,clienteUid:c.uid||null,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
+ let p={clienteId:cid,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
  await set(r,p);resultadoNova.innerHTML=`<div class="card sucesso"><h3>✅ Encomenda criada</h3><p><b>Cliente:</b> ${esc(c.nome)}</p><p><b>Código:</b> ${cod}</p><p><b>Volumes:</b> ${p.volumes}</p><div id=qr></div><p class=small>O cliente verá esta encomenda na Área do Cliente depois de criar sua conta com o e-mail cadastrado.</p><div class=acoes><button onclick="window.print()">🖨️ Imprimir</button><button onclick="navigator.clipboard?.writeText('${cod}');alert('Código copiado.')">📋 Copiar código</button></div></div>`;if(window.QRCode)new QRCode(qr,{text:"ENTREGA|ID:"+r.key,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});obs.value="";volumes.value=1;await carregar();
 };
 window.buscarCodigo=()=>{let cod=codigo.value.trim().toUpperCase(),x=Object.entries(pedidos).find(([id,p])=>(p.codigo||"").toUpperCase()===cod);if(!x)return resultadoBusca.innerHTML="<div class=aviso>Encomenda não encontrada.</div>";mostrar(x[0],x[1])};
@@ -137,7 +141,12 @@ window.abrirAssinatura=function(id){
    <button class="ok" onclick="confirmarEntregaComAssinatura()">Continuar</button>
  </div>
  </div>
- <div id="etapaSenha" style="margin-top:14px" class="aviso"><b>Última etapa</b><p>Confirme para registrar a entrega na sessão administrativa autenticada.</p><div class="acoes"><button class="ok" onclick="finalizarEntrega()">CONFIRMAR ENTREGA</button></div></div>
+ <div id="etapaSenha" style="display:none;margin-top:14px" class="aviso">
+   <b>Última etapa</b>
+   <p>Digite a senha administrativa para registrar a entrega.</p>
+   <input id="senhaEntrega" type="password" inputmode="numeric" placeholder="Senha administrativa">
+   <div class="acoes"><button class="ok" onclick="finalizarEntrega()">CONFIRMAR ENTREGA</button></div>
+ </div>
  </div>`;
  setTimeout(prepararCanvasAssinatura,50);
 };
@@ -157,11 +166,12 @@ function prepararCanvasAssinatura(){
 window.limparAssinatura=function(){const c=document.getElementById("assinaturaCanvas");if(!c||!assinaturaCtx)return;const r=c.getBoundingClientRect();assinaturaCtx.clearRect(0,0,r.width,r.height);assinaturaTemTraço=false};
 window.confirmarEntregaComAssinatura=function(){
  if(!assinaturaTemTraço)return alert("O cliente precisa assinar antes de continuar.");
-
+ const etapa=document.getElementById("etapaSenha"); if(etapa)etapa.style.display="block";
+ document.getElementById("senhaEntrega")?.focus();
 };
 window.finalizarEntrega=async function(){
  if(!assinaturaTemTraço)return alert("Faça a assinatura primeiro.");
- if(!auth.currentUser||auth.currentUser.uid!==ADMIN_UID)return alert("Sessão administrativa inválida. Entre novamente.");
+ if(document.getElementById("senhaEntrega")?.value!=="8526")return alert("Senha administrativa incorreta.");
  const c=document.getElementById("assinaturaCanvas");
  const assinatura=c.toDataURL("image/png");
  const p=pedidos[assinaturaId]; if(!p)return alert("Encomenda não encontrada.");
@@ -180,10 +190,11 @@ window.finalizarEntrega=async function(){
 window.filtrar=f=>{filtroAtual=f;let arr=Object.entries(pedidos).filter(([id,p])=>f==="TODAS"||p.status===f).sort((a,b)=>(b[1].criadoEm||"").localeCompare(a[1].criadoEm||""));listaPedidos.innerHTML=arr.map(([id,p])=>`<div class=pedido><input class=sel type=checkbox value="${id}"> <b>${esc(p.cliente)}</b><br>${esc(p.tipo||p.produtos||"")} — ${p.volumes||1} volume(s)<br><b>Código:</b> ${esc(p.codigo||"")}<br><span class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</span><div class=acoes><button onclick="abrirPedido('${id}')">Abrir</button></div></div>`).join("")||"<p>Nenhuma encomenda.</p>"};
 window.abrirPedido=id=>{abrir("localizar");codigo.value=pedidos[id].codigo;mostrar(id,pedidos[id])};
 window.selecionarTodos=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=true);window.desmarcar=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=false);
-window.excluirSelecionados=async()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");if(!auth.currentUser||auth.currentUser.uid!==ADMIN_UID)return alert("Sessão administrativa inválida. Entre novamente.");if(!confirm(`Excluir ${ids.length} encomenda(s) definitivamente?`))return;await Promise.all(ids.map(id=>remove(ref(db,base+"/pedidos/"+id))));await carregar()};
+window.excluirSelecionados=async()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");if(!confirm(`Excluir ${ids.length} encomenda(s) definitivamente?`))return;await Promise.all(ids.map(id=>remove(ref(db,base+"/pedidos/"+id))));await carregar()};
 window.imprimirSelecionados=()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");let w=open("","_blank");w.document.write("<h1>Comprovantes de Entrega</h1>");ids.forEach(id=>{let p=pedidos[id];w.document.write(`<div style="border:1px solid #333;padding:15px;margin:12px 0"><b>Cliente:</b> ${esc(p.cliente)}<br><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}<br><b>Volumes:</b> ${p.volumes||1}<br><b>Código:</b> ${esc(p.codigo||"")}<br><b>Status:</b> ${esc(p.status||"")}</div>`)});w.document.close();w.print()};
 window.camera=async()=>{if(!navigator.mediaDevices?.getUserMedia)return alert("Câmera indisponível.");pararCamera();cameraBox.innerHTML='<video id=video autoplay playsinline style="width:100%;border-radius:10px"></video><p class=small>Aponte para o QR Code.</p>';try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});video.srcObject=stream;ler()}catch(e){alert("Não foi possível abrir a câmera: "+e.message)}};
 function ler(){if(!stream)return;let v=video;if(!v||v.readyState<2)return requestAnimationFrame(ler);let c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;let x=c.getContext("2d"),d;x.drawImage(v,0,0,c.width,c.height);d=x.getImageData(0,0,c.width,c.height);let r=window.jsQR?.(d.data,d.width,d.height);if(r?.data){let s=r.data;if(s.startsWith("ENTREGA|ID:")){let id=s.slice(11);if(pedidos[id]){pararCamera();mostrar(id,pedidos[id]);return}}codigo.value=s;pararCamera();buscarCodigo();return}requestAnimationFrame(ler)}
 window.pararCamera=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}let v=document.getElementById("video");if(v)v.srcObject=null};
+carregar();
 </script>
 </body></html>
