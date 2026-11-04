@@ -86,6 +86,8 @@ const cfg={apiKey:"AIzaSyBlqKsTH_45vPT4Ysi8_U4RZbVOA4II2s",authDomain:"sistema-d
 const app=initializeApp(cfg),db=getDatabase(app),auth=getAuth(app),base="sistema_entregas";\nconst VENDEDOR_UID="J1nm0x1xFNfuMP6wGWzLyUdRETO2";
 let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
 const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+const loginBox=document.getElementById("loginBox"),appHeader=document.getElementById("appHeader"),appMain=document.getElementById("appMain");
+const loginEmail=document.getElementById("loginEmail"),loginPassword=document.getElementById("loginPassword");
 const loginForm=document.getElementById("loginForm"),loginMsg=document.getElementById("loginMsg"),loginBtn=document.getElementById("loginBtn");
 loginForm.addEventListener("submit",async ev=>{
  ev.preventDefault();loginMsg.textContent="";loginBtn.disabled=true;loginBtn.textContent="Entrando...";
