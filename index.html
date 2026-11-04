@@ -31,19 +31,19 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <button onclick="abrir('clientes')">👥 CLIENTES</button>
 <button onclick="abrir('nova')">📦 NOVA ENCOMENDA</button>
 <button onclick="abrir('localizar')">🔎 LOCALIZAR</button>
-<button onclick="abrir('relatorio')">📊 RELATÓRIO</button>
+<button onclick="abrir('relatorio')">📊 RELATÓRIO</button><button onclick="abrir('fretes')">🚚 CUSTOS DE FRETE</button>
 </div>
 
 <section id="inicio" class="tela ativa"><div class="card"><h2>Visão geral</h2><div class="kpis">
-<div class="kpi"><b id="nClientes">0</b>Clientes</div><div class="kpi"><b id="nAguardando">0</b>Aguardando</div><div class="kpi"><b id="nEntregues">0</b>Entregues</div>
+<div class="kpi"><b id="nClientes">0</b>Clientes</div><div class="kpi"><b id="nAguardando">0</b>Aguardando</div><div class="kpi"><b id="nEntregues">0</b>Entregues</div><div class="kpi"><b id="totalFreteResumo">R$ 0,00</b>Total de fretes</div>
 </div><p class="small">O cliente cria a própria senha na Área do Cliente. O vendedor não cadastra senha.</p></div></section>
 
 <section id="clientes" class="tela">
 <div class="card"><h2>👥 Clientes</h2><label>Buscar cliente</label><input id="busca" oninput="listarClientes()" placeholder="Digite o nome...">
 <div class="acoes"><button onclick="novoCliente()">➕ Novo cliente</button><button class="sec" onclick="abrir('inicio')">Voltar</button></div><div id="listaClientes"></div></div>
 <div id="formCliente" class="card" style="display:none"><h3>Novo cliente</h3>
-<div class="grid"><div><label>Nome completo</label><input id="nome"></div><div><label>Telefone</label><input id="telefone"></div><div><label>E-mail do cliente</label><input id="email" type="email" placeholder="cliente@email.com"></div></div>
-<p class="small">O e-mail será usado para vincular a conta criada pelo próprio cliente. Não cadastre senha aqui.</p>
+<div class="grid"><div><label>Nome completo</label><input id="nome"></div><div><label>Telefone</label><input id="telefone"></div><div><label>E-mail (opcional)</label><input id="email" type="email" placeholder="cliente@email.com"></div></div>
+<p class="small">O cliente poderá criar sua conta usando este telefone e uma senha própria. Não cadastre senha aqui.</p>
 <div class="acoes"><button class="ok" onclick="salvarCliente()">Salvar cliente</button><button class="sec" onclick="fecharFormCliente()">Cancelar</button></div></div>
 </section>
 
@@ -51,19 +51,19 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <label>Cliente</label><select id="clientePedido"></select>
 <label>O que está sendo enviado?</label><select id="tipo"><option>Pacote</option><option>Caixa</option><option>Malote</option><option>Sacola</option><option>Envelope</option><option>Fardo</option><option>Outro</option></select>
 <label>Quantidade de volumes</label><input id="volumes" type="number" min="1" value="1">
-<label>Observação</label><textarea id="obs"></textarea>
+<label>Observação</label><textarea id="obs"></textarea><label>Valor do frete (R$)</label><input id="valorFreteNova" type="number" min="0" step="0.01" placeholder="0,00"><label>Foto do produto (opcional)</label><input id="fotoProduto" type="file" accept="image/*" onchange="previewFotoProduto()"><div id="previewFotoProduto"></div><p class="small">Foto até 1,5 MB; disponível para download pelo cliente.</p>
 <div class="acoes"><button onclick="criarPedido()">GERAR ENCOMENDA</button><button class="sec" onclick="abrir('inicio')">Voltar</button></div></div>
 <div id="resultadoNova"></div></section>
 
 <section id="localizar" class="tela"><div class="card"><h2>🔎 Localizar encomenda</h2>
-<label>Código</label><input id="codigo" placeholder="Digite o código">
+<label>Código</label><input id="codigo" placeholder="Digite o código"><label>Buscar pelo nome do cliente</label><input id="buscaNomePedido" oninput="buscarPorNome()"><div id="resultadosNome"></div>
 <div class="acoes"><button onclick="buscarCodigo()">BUSCAR</button><button class="sec" onclick="camera()">📷 LER QR</button><button class="danger" onclick="pararCamera()">Parar câmera</button></div>
 <div id="cameraBox"></div><div id="resultadoBusca"></div></div></section>
 
 <section id="relatorio" class="tela"><div class="card"><h2>📊 Relatório</h2>
 <div class="acoes"><button class="sec" onclick="filtrar('TODAS')">Todas</button><button class="sec" onclick="filtrar('AGUARDANDO RETIRADA')">Aguardando</button><button class="sec" onclick="filtrar('ENTREGUE')">Entregues</button></div>
 <div class="acoes"><button class="sec" onclick="selecionarTodos()">☑️ Selecionar todos</button><button class="sec" onclick="desmarcar()">Desmarcar</button><button class="danger" onclick="excluirSelecionados()">🗑️ Excluir selecionadas</button><button onclick="imprimirSelecionados()">🖨️ Imprimir selecionadas</button></div>
-<div id="listaPedidos"></div></div></section>
+<div id="listaPedidos"></div></div></section><section id="fretes" class="tela"><div class="card"><h2>Custos de frete</h2><p>Total: <b id="totalFretes">R$ 0,00</b></p><p>Fretes informados: <b id="qtdFretes">0</b></p><button onclick="imprimirTotaisFrete()">Imprimir somente totais do frete</button><div id="listaFretes"></div></div></section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -71,6 +71,7 @@ label{display:block;font-weight:bold;margin:9px 0 5px}input,select,textarea{widt
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import {getDatabase,ref,get,set,push,update,remove} from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+window.previewFotoProduto=()=>{const input=document.getElementById("fotoProduto"),box=document.getElementById("previewFotoProduto"),f=input.files?.[0];if(!f){box.innerHTML="";return}if(!f.type.startsWith("image/")){input.value="";box.innerHTML="";alert("Selecione um arquivo de imagem.");return}if(f.size>1572864){input.value="";box.innerHTML="";alert("A foto deve ter no máximo 1,5 MB.");return}const reader=new FileReader();reader.onload=()=>{box.innerHTML=`<p><b>Prévia:</b></p><img src="${reader.result}" style="max-width:220px;max-height:220px;border-radius:8px" alt="Prévia da foto"><p><a download="foto-produto.jpg" href="${reader.result}">⬇️ Baixar foto selecionada</a></p>`};reader.readAsDataURL(f)};
 const cfg={apiKey:"AIzaSyBlqKsTH_45vPT4Ysi8_U4RZbVOA4II2s",authDomain:"sistema-de-entregas-e456e.firebaseapp.com",databaseURL:"https://sistema-de-entregas-e456e-default-rtdb.firebaseio.com",projectId:"sistema-de-entregas-e456e",storageBucket:"sistema-de-entregas-e456e.firebasestorage.app",messagingSenderId:"759314871865",appId:"1:759314871865:web:07c401370f0e816475ffe8"};
 const app=initializeApp(cfg),db=getDatabase(app),base="sistema_entregas";
 let clientes={},pedidos={},stream=null,filtroAtual="TODAS";
@@ -79,13 +80,13 @@ async function carregar(){
  try{let [c,p]=await Promise.all([get(ref(db,base+"/clientes")),get(ref(db,base+"/pedidos"))]);clientes=c.exists()?c.val():{};pedidos=p.exists()?p.val():{};atualizarResumo();listarClientes();carregarSelect();filtrar(filtroAtual)}
  catch(e){alert("Erro ao carregar o Firebase: "+e.message)}
 }
-window.abrir=id=>{pararCamera();document.querySelectorAll(".tela").forEach(x=>x.classList.remove("ativa"));document.getElementById(id).classList.add("ativa");if(id==="clientes")listarClientes();if(id==="nova")carregarSelect();if(id==="relatorio")filtrar(filtroAtual);atualizarResumo()};
-function atualizarResumo(){nClientes.textContent=Object.keys(clientes).length;nAguardando.textContent=Object.values(pedidos).filter(p=>p.status==="AGUARDANDO RETIRADA").length;nEntregues.textContent=Object.values(pedidos).filter(p=>p.status==="ENTREGUE").length}
+window.abrir=id=>{pararCamera();document.querySelectorAll(".tela").forEach(x=>x.classList.remove("ativa"));document.getElementById(id).classList.add("ativa");if(id==="clientes")listarClientes();if(id==="nova")carregarSelect();if(id==="relatorio")filtrar(filtroAtual);if(id==="fretes")carregarFretes();atualizarResumo()};
+function atualizarResumo(){nClientes.textContent=Object.keys(clientes).length;nAguardando.textContent=Object.values(pedidos).filter(p=>p.status==="AGUARDANDO RETIRADA").length;nEntregues.textContent=Object.values(pedidos).filter(p=>p.status==="ENTREGUE").length;let somaFretes=Object.values(pedidos).reduce((s,p)=>s+(Number(p.custoFrete)||0),0);totalFreteResumo.textContent=somaFretes.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 window.novoCliente=()=>{formCliente.style.display="block";nome.focus()};window.fecharFormCliente=()=>{formCliente.style.display="none";nome.value=telefone.value=email.value=""};
 window.salvarCliente=async()=>{
- let n=nome.value.trim(),t=telefone.value.trim(),e=email.value.trim().toLowerCase();if(!n||!e)return alert("Informe nome e e-mail.");
- let duplicado=Object.entries(clientes).find(([id,c])=>(c.email||"").toLowerCase()===e);if(duplicado)return alert("Este e-mail já está cadastrado para um cliente.");
- let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,email:e,criadoEm:new Date().toISOString()});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
+ let n=nome.value.trim(),t=telefone.value.trim(),e=email.value.trim().toLowerCase();if(!n||!t)return alert("Informe nome e telefone.");
+ let tel=t.replace(/\\D/g,"");if(tel.length===10||tel.length===11)tel="55"+tel;let duplicado=Object.entries(clientes).find(([id,c])=>{let d=String(c.telefone||"").replace(/\\D/g,"");if(d.length===10||d.length===11)d="55"+d;return d===tel});if(duplicado)return alert("Este telefone já está cadastrado para um cliente.");
+ let r=push(ref(db,base+"/clientes"));await set(r,{nome:n,telefone:t,telefoneNormalizado:tel,email:e,criadoEm:new Date().toISOString()});alert("Cliente cadastrado. Agora ele poderá criar a própria conta.");fecharFormCliente();await carregar();
 };
 window.listarClientes=()=>{
  let q=(busca.value||"").toLowerCase().trim(),arr=Object.entries(clientes).filter(([id,c])=>(c.nome||"").toLowerCase().includes(q)).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||""));
@@ -95,13 +96,24 @@ window.usarCliente=id=>{abrir("nova");clientePedido.value=id};
 window.excluirCliente=async id=>{let c=clientes[id],qtd=Object.values(pedidos).filter(p=>p.clienteId===id).length;if(!confirm(`Excluir ${c.nome}?${qtd?`\n\nExistem ${qtd} encomenda(s) vinculada(s). Elas serão preservadas.`:""}`))return;if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");await remove(ref(db,base+"/clientes/"+id));await carregar()};
 function carregarSelect(){clientePedido.innerHTML='<option value="">Selecione o cliente</option>'+Object.entries(clientes).sort((a,b)=>(a[1].nome||"").localeCompare(b[1].nome||"")).map(([id,c])=>`<option value="${id}">${esc(c.nome)}</option>`).join("")}
 function novoCodigo(){let chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",s;do{s="";for(let i=0;i<8;i++)s+=chars[Math.floor(Math.random()*chars.length)]}while(Object.values(pedidos).some(p=>p.codigo===s));return s}
+
 window.criarPedido=async()=>{
  let cid=clientePedido.value;if(!cid)return alert("Selecione um cliente.");let c=clientes[cid],r=push(ref(db,base+"/pedidos")),cod=novoCodigo();
- let p={clienteId:cid,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString()};
- await set(r,p);resultadoNova.innerHTML=`<div class="card sucesso"><h3>✅ Encomenda criada</h3><p><b>Cliente:</b> ${esc(c.nome)}</p><p><b>Código:</b> ${cod}</p><p><b>Volumes:</b> ${p.volumes}</p><div id=qr></div><p class=small>O cliente verá esta encomenda na Área do Cliente depois de criar sua conta com o e-mail cadastrado.</p><div class=acoes><button onclick="window.print()">🖨️ Imprimir</button><button onclick="navigator.clipboard?.writeText('${cod}');alert('Código copiado.')">📋 Copiar código</button></div></div>`;if(window.QRCode)new QRCode(qr,{text:"ENTREGA|ID:"+r.key,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});obs.value="";volumes.value=1;await carregar();
+ let foto=null,arq=document.getElementById("fotoProduto").files?.[0];if(arq){if(!arq.type.startsWith("image/"))return alert("Selecione imagem.");if(arq.size>1572864)return alert("Foto máxima: 1,5 MB.");foto=await new Promise((res,rej)=>{let r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(arq)});}let p={clienteId:cid,cliente:c.nome,telefone:c.telefone||"",email:c.email||"",tipo:tipo.value,produtos:tipo.value,volumes:Number(volumes.value)||1,observacoes:obs.value.trim(),codigo:cod,status:"AGUARDANDO RETIRADA",criadoEm:new Date().toISOString(),fotoProduto:foto,custoFrete:document.getElementById("valorFreteNova").value===""?null:Number(document.getElementById("valorFreteNova").value)};
+ await set(r,p);resultadoNova.innerHTML=`<div class="card sucesso"><h3>✅ Encomenda criada</h3><p><b>Cliente:</b> ${esc(c.nome)}</p><p><b>Código:</b> ${cod}</p><p><b>Volumes:</b> ${p.volumes}</p>${p.custoFrete!==null&&p.custoFrete!==undefined?`<p><b>Frete:</b> ${Number(p.custoFrete).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</p>`:""}<div id=qr></div><p class=small>O cliente verá esta encomenda na Área do Cliente depois de criar sua conta com o e-mail cadastrado.</p><div class=acoes><button onclick="window.print()">🖨️ Imprimir</button><button onclick="navigator.clipboard?.writeText('${cod}');alert('Código copiado.')">📋 Copiar código</button></div></div>`;if(window.QRCode)new QRCode(qr,{text:"ENTREGA|ID:"+r.key,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});obs.value="";volumes.value=1;document.getElementById("fotoProduto").value="";document.getElementById("previewFotoProduto").innerHTML="";document.getElementById("responsavelRetirada").value="";document.getElementById("valorFreteNova").value="";document.getElementById("painelRetiradaFrete").style.display="none";await carregar();
 };
 window.buscarCodigo=()=>{let cod=codigo.value.trim().toUpperCase(),x=Object.entries(pedidos).find(([id,p])=>(p.codigo||"").toUpperCase()===cod);if(!x)return resultadoBusca.innerHTML="<div class=aviso>Encomenda não encontrada.</div>";mostrar(x[0],x[1])};
-function mostrar(id,p){resultadoBusca.innerHTML=`<div class=card><h3>📦 Encomenda localizada</h3><p><b>Cliente:</b> ${esc(p.cliente)}</p><p><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}</p><p><b>Volumes:</b> ${p.volumes||1}</p><p><b>Código:</b> ${esc(p.codigo)}</p><p class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</p>${p.status==="AGUARDANDO RETIRADA"?`<button class=ok onclick="abrirAssinatura('${id}')">✍️ ASSINAR E FINALIZAR</button>`:"<div class=sucesso>Entrega já registrada.</div>"}</div>`}
+function mostrar(id,p){resultadoBusca.innerHTML=`<div class=card><h3>📦 Encomenda localizada</h3><p><b>Cliente:</b> ${esc(p.cliente)}</p><p><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}</p><p><b>Volumes:</b> ${p.volumes||1}</p><p><b>Código:</b> ${esc(p.codigo)}</p>${p.fotoProduto?`<p><b>Foto do produto:</b></p><img src="${p.fotoProduto}" alt="Foto do produto" style="max-width:240px;max-height:240px;border-radius:8px"><p><a download="foto-encomenda-${esc(p.codigo||id)}.jpg" href="${p.fotoProduto}">⬇️ Baixar foto do produto</a></p>`:""}<p class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</p>${p.status==="AGUARDANDO RETIRADA"?`<div class="acoes"><button class=sec onclick="registrarResponsavelRetirada('${id}')">👤 RESPONSÁVEL PELA RETIRADA</button><button class=ok onclick="abrirAssinatura('${id}')">✍️ ASSINAR E FINALIZAR</button></div>${p.responsavelRetirada?`<p><b>Responsável informado:</b> ${esc(p.responsavelRetirada)}</p>`:""}`:"<div class=sucesso>Entrega já registrada.</div>"}</div>`}
+window.registrarResponsavelRetirada=async function(id){
+ const nome=prompt("Informe o nome completo de quem está retirando a encomenda:");
+ if(nome===null)return;
+ const limpo=nome.trim();
+ if(!limpo)return alert("Informe o nome do responsável pela retirada.");
+ const p=pedidos[id];if(!p)return alert("Encomenda não encontrada.");
+ p.responsavelRetirada=limpo;
+ await update(ref(db,base+"/pedidos/"+id),{responsavelRetirada:limpo});
+ mostrar(id,p);
+};
 let assinaturaId=null, assinaturaCtx=null, assinaturaDesenhando=false, assinaturaTemTraço=false;
 window.abrirAssinatura=function(id){
  assinaturaId=id;
@@ -157,19 +169,24 @@ window.finalizarEntrega=async function(){
    assinatura,
    assinaturaTipo:"assinatura do cliente na retirada"
  });
- p.status="ENTREGUE";p.entregueEm=agora;p.assinatura=assinatura;
+ p.status="ENTREGUE";p.entregueEm=agora;p.assinatura=assinatura;p.responsavelRetirada=p.responsavelRetirada||"";
  alert("✅ Entrega confirmada com assinatura.");
  await carregar();
  mostrar(assinaturaId,p);
 };
-window.filtrar=f=>{filtroAtual=f;let arr=Object.entries(pedidos).filter(([id,p])=>f==="TODAS"||p.status===f).sort((a,b)=>(b[1].criadoEm||"").localeCompare(a[1].criadoEm||""));listaPedidos.innerHTML=arr.map(([id,p])=>`<div class=pedido><input class=sel type=checkbox value="${id}"> <b>${esc(p.cliente)}</b><br>${esc(p.tipo||p.produtos||"")} — ${p.volumes||1} volume(s)<br><b>Código:</b> ${esc(p.codigo||"")}<br><span class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</span><div class=acoes><button onclick="abrirPedido('${id}')">Abrir</button></div></div>`).join("")||"<p>Nenhuma encomenda.</p>"};
+window.filtrar=f=>{filtroAtual=f;let arr=Object.entries(pedidos).filter(([id,p])=>f==="TODAS"||p.status===f).sort((a,b)=>(b[1].criadoEm||"").localeCompare(a[1].criadoEm||""));listaPedidos.innerHTML=arr.map(([id,p])=>`<div class=pedido><input class=sel type=checkbox value="${id}"> <b>${esc(p.cliente)}</b><br>${esc(p.tipo||p.produtos||"")} — ${p.volumes||1} volume(s)<br><b>Código:</b> ${esc(p.codigo||"")}<br><span class="${p.status==="ENTREGUE"?"entregue":"aguardando"}">${esc(p.status)}</span>${p.entregueEm?`<br>Entrega: ${esc(new Date(p.entregueEm).toLocaleString("pt-BR"))}`:""}${p.status==="ENTREGUE"&&p.responsavelRetirada?`<br><b>Retirado por:</b> ${esc(p.responsavelRetirada)}`:""}<div class=acoes><button onclick="abrirPedido('${id}')">Abrir</button></div></div>`).join("")||"<p>Nenhuma encomenda.</p>"};
 window.abrirPedido=id=>{abrir("localizar");codigo.value=pedidos[id].codigo;mostrar(id,pedidos[id])};
 window.selecionarTodos=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=true);window.desmarcar=()=>document.querySelectorAll(".sel").forEach(x=>x.checked=false);
 window.excluirSelecionados=async()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");if(prompt("Senha administrativa:")!=="8526")return alert("Senha incorreta.");if(!confirm(`Excluir ${ids.length} encomenda(s) definitivamente?`))return;await Promise.all(ids.map(id=>remove(ref(db,base+"/pedidos/"+id))));await carregar()};
 window.imprimirSelecionados=()=>{let ids=[...document.querySelectorAll(".sel:checked")].map(x=>x.value);if(!ids.length)return alert("Selecione encomendas.");let w=open("","_blank");w.document.write("<h1>Comprovantes de Entrega</h1>");ids.forEach(id=>{let p=pedidos[id];w.document.write(`<div style="border:1px solid #333;padding:15px;margin:12px 0"><b>Cliente:</b> ${esc(p.cliente)}<br><b>Mercadoria:</b> ${esc(p.tipo||p.produtos||"")}<br><b>Volumes:</b> ${p.volumes||1}<br><b>Código:</b> ${esc(p.codigo||"")}<br><b>Status:</b> ${esc(p.status||"")}</div>`)});w.document.close();w.print()};
+window.buscarPorNome=()=>{let q=(buscaNomePedido.value||"").toLowerCase().trim(),a=Object.entries(pedidos).filter(([id,p])=>(p.cliente||"").toLowerCase().includes(q)).sort((x,y)=>(x[1].cliente||"").localeCompare(y[1].cliente||""));resultadosNome.innerHTML=q?a.map(([id,p])=>`<div class="pedido"><b>${esc(p.cliente)}</b> ${esc(p.codigo||"")} <button onclick="abrirPedido('${id}')">Abrir</button></div>`).join("")||"Não encontrado": ""};
+window.carregarFretes=()=>{let a=Object.entries(pedidos).sort((x,y)=>(x[1].cliente||"").localeCompare(y[1].cliente||"")),t=a.reduce((s,[id,p])=>s+(Number(p.custoFrete)||0),0);totalFretes.textContent=t.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});qtdFretes.textContent=a.filter(([id,p])=>p.custoFrete!=null).length;listaFretes.innerHTML=a.map(([id,p])=>`<div class="pedido"><b>${esc(p.cliente)}</b> · ${esc(p.codigo||"")}<label>Frete (R$)</label><input type="number" min="0" step="0.01" id="frete${id}" value="${p.custoFrete??""}"><button onclick="salvarFrete('${id}')">Salvar</button></div>`).join("")};
+window.salvarFrete=async id=>{let v=document.getElementById("frete"+id).value;if(v!==""&&(!Number.isFinite(Number(v))||Number(v)<0))return alert("Valor inválido");await update(ref(db,base+"/pedidos/"+id),{custoFrete:v===""?null:Number(v)});if(v==="")delete pedidos[id].custoFrete;else pedidos[id].custoFrete=Number(v);carregarFretes()};
+window.imprimirTotaisFrete=()=>{let a=Object.values(pedidos),t=a.reduce((s,p)=>s+(Number(p.custoFrete)||0),0),q=a.filter(p=>p.custoFrete!=null).length,w=open("","_blank");w.document.write(`<h1>Totais de frete</h1><p>Encomendas: ${q}</p><h2>Total: ${t.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</h2>`);w.document.close();w.print()};
 window.camera=async()=>{if(!navigator.mediaDevices?.getUserMedia)return alert("Câmera indisponível.");pararCamera();cameraBox.innerHTML='<video id=video autoplay playsinline style="width:100%;border-radius:10px"></video><p class=small>Aponte para o QR Code.</p>';try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});video.srcObject=stream;ler()}catch(e){alert("Não foi possível abrir a câmera: "+e.message)}};
 function ler(){if(!stream)return;let v=video;if(!v||v.readyState<2)return requestAnimationFrame(ler);let c=document.createElement("canvas");c.width=v.videoWidth;c.height=v.videoHeight;let x=c.getContext("2d"),d;x.drawImage(v,0,0,c.width,c.height);d=x.getImageData(0,0,c.width,c.height);let r=window.jsQR?.(d.data,d.width,d.height);if(r?.data){let s=r.data;if(s.startsWith("ENTREGA|ID:")){let id=s.slice(11);if(pedidos[id]){pararCamera();mostrar(id,pedidos[id]);return}}codigo.value=s;pararCamera();buscarCodigo();return}requestAnimationFrame(ler)}
 window.pararCamera=()=>{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}let v=document.getElementById("video");if(v)v.srcObject=null};
 carregar();
 </script>
 </body></html>
+
