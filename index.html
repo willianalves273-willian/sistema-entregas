@@ -89,6 +89,14 @@ const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&
 const loginBox=document.getElementById("loginBox"),appHeader=document.getElementById("appHeader"),appMain=document.getElementById("appMain");
 const loginEmail=document.getElementById("loginEmail"),loginPassword=document.getElementById("loginPassword");
 const loginForm=document.getElementById("loginForm"),loginMsg=document.getElementById("loginMsg"),loginBtn=document.getElementById("loginBtn");
+const loginForm=document.getElementById("loginForm");
+const loginEmail=document.getElementById("loginEmail");
+const loginPassword=document.getElementById("loginPassword");
+const loginMsg=document.getElementById("loginMsg");
+const loginBtn=document.getElementById("loginBtn");
+const loginBox=document.getElementById("loginBox");
+const appHeader=document.getElementById("appHeader");
+const appMain=document.getElementById("appMain");
 loginForm.addEventListener("submit",async ev=>{
  ev.preventDefault();loginMsg.textContent="";loginBtn.disabled=true;loginBtn.textContent="Entrando...";
  try{await signInWithEmailAndPassword(auth,loginEmail.value.trim(),loginPassword.value)}
