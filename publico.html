@@ -97,7 +97,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
 import {
-  getDatabase, ref, get, set, push
+  getDatabase, ref, get, set, push, query, orderByChild, equalTo, update
 } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
 
 const firebaseConfig = {
@@ -125,49 +125,36 @@ function limparMensagem(){ $("mensagem").innerHTML=""; }
 function normalizarEmail(v){return String(v||"").trim().toLowerCase()}
 
 async function encontrarClientePorEmail(email){
-  const snap=await get(ref(db,"sistema_entregas/clientes"));
-  if(!snap.exists()) return null;
-  const clientes=snap.val()||{};
-  for(const [id,c] of Object.entries(clientes)){
-    if(normalizarEmail(c.email)===normalizarEmail(email)){
-      return {id,...c};
-    }
-  }
-  return null;
+  const key=encodeURIComponent(normalizarEmail(email));
+  const lookup=await get(ref(db,`sistema_entregas/emailLookup/${key}`));
+  if(!lookup.exists()) return null;
+  // Antes do vínculo, o cliente só pode consultar o índice mínimo por e-mail.
+  return {id:lookup.val().clienteId,email:normalizarEmail(email)};
 }
 
 async function encontrarClientePorUid(uid){
-  const snap=await get(ref(db,"sistema_entregas/clientes"));
-  if(!snap.exists()) return null;
-  const clientes=snap.val()||{};
-  for(const [id,c] of Object.entries(clientes)){
-    if(c.uid===uid) return {id,...c};
-  }
-  return null;
+  const lookup=await get(ref(db,`sistema_entregas/uidLookup/${uid}`));
+  if(!lookup.exists()) return null;
+  const id=lookup.val().clienteId;
+  const snap=await get(ref(db,`sistema_entregas/clientes/${id}`));
+  return snap.exists()?{id,...snap.val()}:null;
 }
 
 async function vincularContaAoCliente(uid,email,nome,telefone){
-  let cliente=await encontrarClientePorEmail(email);
-  if(cliente){
-    await set(ref(db,`sistema_entregas/clientes/${cliente.id}/uid`),uid);
-    return {...cliente,uid};
+  const lookup=await encontrarClientePorEmail(email);
+  if(!lookup){
+    throw new Error("Não encontramos um cadastro com este e-mail. Peça ao vendedor para cadastrar seu e-mail antes de criar a conta.");
   }
-
-  // Para teste: cria um cadastro de cliente quando ainda não existir.
-  const novo=push(ref(db,"sistema_entregas/clientes"));
-  const dados={
-    nome:nome.trim(),
-    telefone:telefone.trim(),
-    email:normalizarEmail(email),
-    uid,
-    criadoEm:new Date().toISOString()
-  };
-  await set(novo,dados);
-  return {id:novo.key,...dados};
+  // A regra do Firebase autoriza o próprio usuário a gravar somente seu UID
+  // no cadastro cujo e-mail corresponde ao e-mail autenticado.
+  await set(ref(db,`sistema_entregas/clientes/${lookup.id}/uid`),uid);
+  await set(ref(db,`sistema_entregas/uidLookup/${uid}`),{clienteId:lookup.id});
+  const snap=await get(ref(db,`sistema_entregas/clientes/${lookup.id}`));
+  return snap.exists()?{id:lookup.id,...snap.val()}: {...lookup,uid};
 }
 
 async function carregarPedidos(cliente){
-  const snap=await get(ref(db,"sistema_entregas/pedidos"));
+  const snap=await get(query(ref(db,"sistema_entregas/pedidos"),orderByChild("clienteUid"),equalTo(cliente.uid)));
   const area=$("pedidos");
   area.innerHTML="";
 
@@ -266,6 +253,7 @@ $("btnCadastro").onclick=async()=>{
     if(e.code==="auth/email-already-in-use") msg="Este e-mail já possui uma conta. Use ENTRAR.";
     if(e.code==="auth/invalid-email") msg="E-mail inválido.";
     if(e.code==="auth/weak-password") msg="A senha é muito fraca.";
+    if(e.code==="auth/api-key-not-valid") msg="A chave de configuração do Firebase está inválida. O administrador precisa corrigir a API key no projeto.";
     mensagem(msg,"err");
   }finally{
     $("btnCadastro").disabled=false;
@@ -284,6 +272,7 @@ $("btnLogin").onclick=async()=>{
     console.error(e);
     let msg="Não foi possível entrar.";
     if(e.code==="auth/invalid-credential") msg="E-mail ou senha incorretos.";
+    if(e.code==="auth/api-key-not-valid") msg="A chave de configuração do Firebase está inválida. Avise o administrador.";
     mensagem(msg,"err");
   }finally{$("btnLogin").disabled=false;}
 };
@@ -304,7 +293,15 @@ onAuthStateChanged(auth,async user=>{
 
   try{
     let cliente=await encontrarClientePorUid(user.uid);
-    if(!cliente) cliente=await encontrarClientePorEmail(user.email);
+    if(!cliente){
+      const cadastro=await encontrarClientePorEmail(user.email);
+      if(cadastro){
+        await set(ref(db,`sistema_entregas/clientes/${cadastro.id}/uid`),user.uid);
+        await set(ref(db,`sistema_entregas/uidLookup/${user.uid}`),{clienteId:cadastro.id});
+        const perfil=await get(ref(db,`sistema_entregas/clientes/${cadastro.id}`));
+        if(perfil.exists()) cliente={id:cadastro.id,...perfil.val()};
+      }
+    }
 
     if(!cliente){
       $("nomeCliente").textContent="cliente";
